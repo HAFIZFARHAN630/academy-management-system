@@ -73,7 +73,11 @@ app.get('/api/stats', authMiddleware, requireRole('admin'), async (req, res) => 
 
 // ─── Base Route (Health Check) ────────────────────────────────────────────────
 app.get('/', (req, res) => {
-    res.json({ status: 'ok', message: 'Academy API Server is running' });
+    res.json({ 
+        status: 'ok', 
+        message: 'Academy API Server is running',
+        deployed_at: '2026-04-27T10:30:00Z'
+    });
 });
 
 app.listen(PORT, () => {
