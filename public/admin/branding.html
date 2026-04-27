@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Branding & About — ClickTake Academy</title>
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/animations.css">
+  <style>
+    .branding-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-6);
+    }
+
+    .branding-card {
+      background: var(--bg-600);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: var(--space-6);
+    }
+
+    .branding-card h4 {
+      font-family: var(--font-display);
+      margin-bottom: var(--space-5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .preview-box {
+      width: 100%;
+      height: 120px;
+      border-radius: var(--radius-md);
+      background: var(--bg-700);
+      border: 2px dashed var(--border-medium);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--space-4);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .preview-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .color-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 15px;
+    }
+
+    .color-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      background: var(--bg-700);
+      border-radius: var(--radius-md);
+    }
+
+    .color-input-wrap input[type="color"] {
+      width: 34px;
+      height: 34px;
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+
+    @media(max-width:992px) {
+      .branding-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body class="gradient-mesh">
+  <div class="admin-layout" id="app"></div>
+  <div id="toast-container"></div>
+  <script src="/js/api.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>
+    document.getElementById('app').innerHTML = `
+    ${getSidebarHTML('settings')}
+    <main class="main-content">
+      ${getTopbarHTML('Branding & Academy Identity')}
+      <div class="page-content">
+        <div class="flex items-center gap-3" style="margin-bottom:var(--space-6);">
+          <a href="/admin/settings.html" class="btn btn-secondary btn-sm">← Back to Settings</a>
+          <h3>🎨 Custom Branding Center</h3>
+        </div>
+
+        <div class="branding-grid">
+          
+          <!-- Identity Section -->
+          <div class="branding-card">
+            <h4>🏷️ Academy Identity</h4>
+            <div class="form-group">
+              <label class="form-label">Academy Name</label>
+              <input class="form-control" id="br-name" placeholder="e.g. ClickTake Academy">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tagline</label>
+              <input class="form-control" id="br-tagline" placeholder="e.g. Excellence in Education">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Established Year</label>
+              <input class="form-control" id="br-year" type="number" placeholder="2024">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Academy Logo (PNG/SVG)</label>
+              <div class="preview-box" id="logo-preview"><span>No Logo Uploaded</span></div>
+              <input type="file" id="br-logo-file" accept="image/*" style="display:none" onchange="previewImage(this, 'logo-preview')">
+              <button class="btn btn-secondary btn-sm w-full" onclick="document.getElementById('br-logo-file').click()">📤 Upload New Logo</button>
+            </div>
+          </div>
+
+          <!-- Theme & Style -->
+          <div class="branding-card">
+            <h4>🌈 Theme & Visual Style</h4>
+            <div class="color-picker-grid">
+              <div class="form-group">
+                <label class="form-label text-xs">Primary Color</label>
+                <div class="color-input-wrap">
+                  <input type="color" id="theme-primary" value="#6C63FF">
+                  <span class="text-sm font-mono" id="val-primary">#6C63FF</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label text-xs">Secondary Color</label>
+                <div class="color-input-wrap">
+                  <input type="color" id="theme-secondary" value="#2ED573">
+                  <span class="text-sm font-mono" id="val-secondary">#2ED573</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label text-xs">Accent Color</label>
+                <div class="color-input-wrap">
+                  <input type="color" id="theme-accent" value="#00D2D3">
+                  <span class="text-sm font-mono" id="val-accent">#00D2D3</span>
+                </div>
+              </div>
+            </div>
+            
+            <div style="margin-top:var(--space-6);">
+              <h4 style="margin-bottom:var(--space-4);">👁️ Visibility Toggles</h4>
+              <div class="flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm">Show Logo on Public Site</span>
+                  <label class="toggle"><input type="checkbox" id="v-public-logo" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm">Enable Hero Banner</span>
+                  <label class="toggle"><input type="checkbox" id="v-hero-banner" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm">Display WhatsApp Bubble</span>
+                  <label class="toggle"><input type="checkbox" id="v-whatsapp" checked><span class="toggle-slider"></span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- About Us & rich Text -->
+          <div class="branding-card" style="grid-column: 1 / -1;">
+            <h4>📝 About the Academy</h4>
+            <div class="form-group">
+              <label class="form-label">Description (Markdown Supported)</label>
+              <textarea class="form-control" id="br-about" rows="6" placeholder="Describe your academy, its mission, and history..."></textarea>
+            </div>
+            <div class="branding-grid">
+               <div class="form-group">
+                  <label class="form-label">Address</label>
+                  <input class="form-control" id="br-address">
+               </div>
+               <div class="form-group">
+                  <label class="form-label">WhatsApp Number</label>
+                  <input class="form-control" id="br-phone">
+               </div>
+               <div class="form-group">
+                  <label class="form-label">Facebook Page URL</label>
+                  <input class="form-control" id="br-facebook">
+               </div>
+               <div class="form-group">
+                  <label class="form-label">Instagram Handle</label>
+                  <input class="form-control" id="br-instagram">
+               </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="sticky-footer" style="margin-top:var(--space-6); display:flex; justify-content:flex-end;">
+          <button class="btn btn-primary" style="padding:12px 40px;" onclick="saveBranding()">🚀 Publish Branding Changes</button>
+        </div>
+      </div>
+    </main>`;
+
+    initAdminLayout('/admin/settings.html');
+
+    // Sync hex values with color pickers
+    ['primary', 'secondary', 'accent'].forEach(c => {
+      const el = document.getElementById(`theme-${c}`);
+      el.oninput = () => document.getElementById(`val-${c}`).textContent = el.value.toUpperCase();
+    });
+
+    function previewImage(input, targetId) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          document.getElementById(targetId).innerHTML = `<img src="${e.target.result}">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    async function loadBranding() {
+      try {
+        const data = await API.get('/settings/branding');
+        if (data.name) document.getElementById('br-name').value = data.name;
+        if (data.tagline) document.getElementById('br-tagline').value = data.tagline;
+        if (data.year) document.getElementById('br-year').value = data.year;
+        if (data.logo) document.getElementById('logo-preview').innerHTML = `<img src="${data.logo}">`;
+        if (data.colors) {
+          document.getElementById('theme-primary').value = data.colors.primary;
+          document.getElementById('val-primary').textContent = data.colors.primary.toUpperCase();
+          document.getElementById('theme-secondary').value = data.colors.secondary;
+          document.getElementById('val-secondary').textContent = data.colors.secondary.toUpperCase();
+          document.getElementById('theme-accent').value = data.colors.accent;
+          document.getElementById('val-accent').textContent = data.colors.accent.toUpperCase();
+        }
+        if (data.about) document.getElementById('br-about').value = data.about;
+        if (data.contacts) {
+          document.getElementById('br-address').value = data.contacts.address || '';
+          document.getElementById('br-phone').value = data.contacts.phone || '';
+          document.getElementById('br-facebook').value = data.contacts.facebook || '';
+          document.getElementById('br-instagram').value = data.contacts.instagram || '';
+        }
+        if (data.toggles) {
+          document.getElementById('v-public-logo').checked = data.toggles.public_logo;
+          document.getElementById('v-hero-banner').checked = data.toggles.hero_banner;
+          document.getElementById('v-whatsapp').checked = data.toggles.whatsapp;
+        }
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function saveBranding() {
+      const btn = event.target;
+      btn.disabled = true; btn.textContent = 'Publishing...';
+
+      const branding = {
+        name: document.getElementById('br-name').value,
+        tagline: document.getElementById('br-tagline').value,
+        year: document.getElementById('br-year').value,
+        about: document.getElementById('br-about').value,
+        colors: {
+          primary: document.getElementById('theme-primary').value,
+          secondary: document.getElementById('theme-secondary').value,
+          accent: document.getElementById('theme-accent').value
+        },
+        contacts: {
+          address: document.getElementById('br-address').value,
+          phone: document.getElementById('br-phone').value,
+          facebook: document.getElementById('br-facebook').value,
+          instagram: document.getElementById('br-instagram').value
+        },
+        toggles: {
+          public_logo: document.getElementById('v-public-logo').checked,
+          hero_banner: document.getElementById('v-hero-banner').checked,
+          whatsapp: document.getElementById('v-whatsapp').checked
+        }
+      };
+
+      // Handle logo upload if exists
+      const logoFile = document.getElementById('br-logo-file').files[0];
+      if (logoFile) {
+         // In a real app, we'd use FormData. For simplicity, we'll convert to base64 or a separate upload
+         branding.logo = await toBase64(logoFile);
+      }
+
+      try {
+        await API.put('/settings/branding', branding);
+        toast('🚀 Academy branding updated successfully!', 'success');
+        setTimeout(() => location.reload(), 1500);
+      } catch (e) { toast(e.message, 'error'); }
+      finally { btn.disabled = false; btn.textContent = '🚀 Publish Branding Changes'; }
+    }
+
+    function toBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    }
+
+    loadBranding();
+  </script>
+</body>
+
+</html>

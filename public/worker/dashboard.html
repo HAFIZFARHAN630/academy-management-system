@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Dashboard — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <style>
+        body {
+            background: var(--bg-900);
+        }
+
+        .hero-panel {
+            background: linear-gradient(135deg, rgba(247, 183, 49, 0.2), transparent), var(--bg-700);
+            padding: var(--space-8);
+            border-radius: var(--radius-2xl);
+            border: 1px solid var(--border-medium);
+            margin-bottom: var(--space-6);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-panel::before {
+            content: '👷';
+            position: absolute;
+            right: -10px;
+            top: -10px;
+            font-size: 12rem;
+            opacity: 0.05;
+            transform: rotate(-15deg);
+        }
+
+        .punch-card {
+            background: linear-gradient(135deg, var(--bg-600), var(--bg-500));
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            text-align: center;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .time-display {
+            font-family: var(--font-mono, monospace);
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--color-worker);
+            letter-spacing: 2px;
+            margin: var(--space-4) 0;
+            text-shadow: 0 0 10px rgba(247, 183, 49, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="topbar"
+        style="position:sticky;top:0;z-index:10;background:rgba(18,18,18,0.8);backdrop-filter:blur(10px);border-bottom:1px solid var(--border-subtle);padding:0 var(--space-6);">
+        <div class="flex items-center gap-3">
+            <div class="avatar" id="nav-avatar" style="background:var(--color-worker);color:#111;">W</div>
+            <div class="font-semibold text-lg">ClickTake Academy</div>
+        </div>
+        <div class="flex items-center gap-4">
+            <button class="notif-btn" id="notif-btn">🔔<span class="notif-badge" id="notif-count">0</span></button>
+            <button class="btn btn-secondary btn-sm" onclick="logout()">🚪 Logout</button>
+        </div>
+    </div>
+
+    <div class="wrap" style="max-width:1000px; margin:0 auto; padding:var(--space-6);">
+        <div class="hero-panel">
+            <div style="position:relative;z-index:1;">
+                <div class="font-display" style="font-size:2rem;font-weight:800;margin-bottom:4px;">Hello, <span
+                        id="u-name">Worker</span>! 👋</div>
+                <p class="text-secondary">Your shift schedule and attendance tracker.</p>
+                <div class="flex gap-4" style="margin-top:var(--space-5);">
+                    <span class="badge badge-purple" id="u-role">Role: —</span>
+                    <span class="badge badge-blue" id="u-shift">Shift: —</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-2 stagger-children">
+            <!-- Punch Card -->
+            <div class="punch-card">
+                <h3 style="font-family:var(--font-display);">Shift Attendance</h3>
+                <div class="time-display" id="live-clock">00:00:00</div>
+                <div id="punch-status"><span class="badge"
+                        style="background:rgba(255,107,129,0.15);color:var(--color-accent-rose);padding:4px 12px;font-size:0.85rem;">🔴
+                        Off Duty</span></div>
+                <div class="flex gap-3 justify-center" style="margin-top:var(--space-4);" id="punch-actions">
+                    <button class="btn btn-primary" id="btn-punch-in"
+                        style="flex:1;max-width:160px;padding:12px;font-size:1rem;background:var(--color-accent-green);color:#fff;"
+                        onclick="smartPunch('in')">🟢 PUNCH IN</button>
+                    <button class="btn btn-danger" id="btn-punch-out"
+                        style="flex:1;max-width:160px;padding:12px;font-size:1rem;background:var(--color-accent-rose);color:#fff;"
+                        onclick="smartPunch('out')">🔴 PUNCH OUT</button>
+                </div>
+                <div class="punch-timeline-container" style="margin-top:var(--space-4);">
+                    <div class="text-xs text-muted uppercase font-bold" style="margin-bottom:8px;letter-spacing:1px;">Today's Activity</div>
+                    <div id="punch-history" style="max-height:120px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+                        <div class="text-sm text-muted italic">Waiting for activity...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="flex flex-col gap-6">
+                <div class="grid-2 gap-4">
+                    <div class="stat-card" style="--stat-color:#00D2D3;padding:var(--space-4);">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-value">22</div>
+                        <div class="stat-label">Days Present</div>
+                    </div>
+                    <div class="stat-card" style="--stat-color:#2ED573;padding:var(--space-4);">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-value">—</div>
+                        <div class="stat-label" style="font-size:0.7rem;">Payslip Available</div>
+                    </div>
+                </div>
+                <div class="table-container" style="flex:1;margin:0;">
+                    <div class="table-header">
+                        <h3>🛠️ Staff Portal</h3>
+                    </div>
+                    <div id="dynamic-modules"
+                        style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3);">
+                        <button class="btn btn-secondary" style="justify-content:flex-start;padding:12px;"
+                            onclick="openLeaveModal()">📅 Apply for Leave</button>
+                        <button class="btn btn-secondary" style="justify-content:flex-start;padding:12px;"
+                            onclick="openProfileModal()">👤 Edit My Profile</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leave Modal -->
+    <div class="modal-overlay" id="leave-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📅 Apply for Leave</h3><button class="btn-close"
+                    onclick="closeAllModals()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group"><label class="form-label">Leave Type <span class="req">*</span></label>
+                    <select class="form-control" id="l-type">
+                        <option>Sick Leave</option>
+                        <option>Casual/Personal Leave</option>
+                        <option>Unpaid Leave</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Start Date <span
+                                class="req">*</span></label><input type="date" class="form-control" id="l-start"
+                            required></div>
+                    <div class="form-group"><label class="form-label">End Date <span class="req">*</span></label><input
+                            type="date" class="form-control" id="l-end" required></div>
+                </div>
+                <div class="form-group"><label class="form-label">Reason</label><textarea class="form-control"
+                        id="l-reason" rows="3" placeholder="Explain your reason..."></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-secondary"
+                    onclick="closeAllModals()">Cancel</button><button
+                    class="btn btn-primary" onclick="submitLeave()">Submit Application</button></div>
+        </div>
+    </div>
+
+    <!-- Profile Edit Modal -->
+    <div class="modal-overlay" id="profile-modal" style="z-index: 1000;">
+        <div class="modal" style="pointer-events: auto;">
+            <div class="modal-header">
+                <h3>👤 Edit Profile</h3>
+                <button class="btn-close" onclick="closeAllModals()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="flex justify-center" style="margin-bottom:var(--space-5);">
+                    <div class="profile-avatar" id="p-photo-preview" style="width:100px; height:100px; font-size:2.5rem; cursor:pointer;" onclick="document.getElementById('p-photo-input').click()">W</div>
+                    <input type="file" id="p-photo-input" hidden accept="image/*" onchange="previewProfilePhoto(this)">
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Login ID</label><input class="form-control" id="p-id" readonly style="background:var(--bg-800);color:var(--text-muted);" title="Managed by Admin"></div>
+                    <div class="form-group"><label class="form-label">Role</label><input class="form-control" id="p-role" readonly style="background:var(--bg-800);color:var(--text-muted);" title="Managed by Admin"></div>
+                </div>
+                <div class="form-group"><label class="form-label">Full Name</label><input class="form-control" id="p-name"></div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">Phone <span class="req">*</span></label><input class="form-control" id="p-phone" placeholder="03xx-xxxxxxx"></div>
+                    <div class="form-group"><label class="form-label">CNIC</label><input class="form-control" id="p-cnic" readonly style="background:var(--bg-800);color:var(--text-muted);" title="Managed by Admin"></div>
+                </div>
+                <div class="form-group"><label class="form-label">Address</label><input class="form-control" id="p-address"></div>
+                <div class="form-group"><label class="form-label">Emergency Contact</label><input class="form-control" id="p-emergency"></div>
+                <div class="form-group"><label class="form-label">Preferred Language</label>
+                    <select class="form-control" id="p-language">
+                        <option value="English">English</option>
+                        <option value="Urdu">Urdu</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAllModals()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitProfile()">Save Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Early Leave Modal -->
+    <div class="modal-overlay" id="early-leave-modal" style="z-index: 1001;">
+        <div class="modal" style="max-width:400px; pointer-events: auto;">
+            <div class="modal-header">
+                <h3 id="modal-title">⚠️ Punch Out Reason</h3>
+                <button class="btn-close" onclick="closeAllModals()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary text-sm" id="modal-desc" style="margin-bottom:15px;">Please provide a reason for this punch out.</p>
+                <div class="form-group">
+                    <label class="form-label" id="modal-reason-label">Reason</label>
+                    <select class="form-control" id="early-reason-select" onchange="toggleOtherReason(this.value)">
+                        <option value="Sick">Sick / Medical Emergency</option>
+                        <option value="Personal">Personal / Family Matter</option>
+                        <option value="Emergency">Urgent Work / Emergency</option>
+                        <option value="Other">Other (Please specify)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="other-reason-div" style="display:none; margin-top:10px;">
+                    <label class="form-label">Please explain</label>
+                    <textarea class="form-control" id="early-reason-text" rows="2" placeholder="Brief explanation..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAllModals()">Cancel</button>
+                <button class="btn btn-primary" id="btn-submit-early" onclick="submitEarlyPunchOut()">Submit & Punch Out</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="/js/face-api.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/face-auth.js"></script>
+    <script>
+        if (!requireAuth(['worker'])) { }
+        const getLocalDate = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+        const getLocalTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
+
+        const u = getUser();
+        document.getElementById('u-name').textContent = u.full_name?.split(' ')[0] || 'Worker';
+        document.getElementById('u-role').innerHTML = `Role: <span class="font-bold">${u.designation || 'Staff'}</span>`;
+        document.getElementById('u-shift').innerHTML = `Shift: <span class="font-bold">${u.shift_start || '—'} - ${u.shift_end || '—'}</span>`;
+        document.getElementById('nav-avatar').textContent = avatarLetter(u.full_name || 'W');
+        setInterval(() => document.getElementById('live-clock').textContent = getLocalTime(), 1000);
+
+        let liveTimer;
+        function updateLiveDuration(punchInTime) {
+            clearInterval(liveTimer);
+            if (!punchInTime) return;
+            liveTimer = setInterval(() => {
+                const diff = Math.floor(Date.now() / 1000) - punchInTime;
+                if (diff < 0) return;
+                const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+                const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+                const s = String(diff % 60).padStart(2, '0');
+                document.getElementById('live-clock').textContent = `${h}:${m}:${s}`;
+            }, 1000);
+        }
+
+        async function loadDashboard() {
+            try {
+                const d = await API.get('/attendance/daily-report');
+                const myPunch = d.find(r => r.user_id === u.id);
+                const st = document.getElementById('punch-status');
+                const act = document.getElementById('punch-actions');
+                const hist = document.getElementById('punch-history');
+
+                clearInterval(liveTimer);
+
+                const btnIn = document.getElementById('btn-punch-in');
+                const btnOut = document.getElementById('btn-punch-out');
+
+                if (!myPunch || !myPunch.punch_in) {
+                    st.innerHTML = '<span class="badge" style="background:rgba(255,107,129,0.15);color:var(--color-accent-rose);padding:4px 12px;font-size:0.85rem;">🔴 Off Duty</span>';
+                    btnIn.disabled = false; btnIn.style.opacity = '1';
+                    btnOut.disabled = true; btnOut.style.opacity = '0.4'; btnOut.title = 'Check In First';
+                    hist.innerHTML = '<div class="text-sm text-muted italic">Tap PUNCH IN to start your session today</div>';
+                } else if (!myPunch.punch_out) {
+                    st.innerHTML = '<span class="badge" style="background:rgba(46,213,115,0.15);color:var(--color-accent-green);padding:4px 12px;font-size:0.85rem;">🟢 On Duty</span>';
+                    btnIn.disabled = true; btnIn.style.opacity = '0.4'; btnIn.title = 'Already Checked In';
+                    btnOut.disabled = false; btnOut.style.opacity = '1';
+                    hist.innerHTML = `<div class="flex items-center gap-2 text-sm"><span style="color:var(--color-accent-green)">✅</span> Punched in at <b>${formatTime(myPunch.punch_in)}</b></div>`;
+                    updateLiveDuration(myPunch.punch_in);
+                } else {
+                    st.innerHTML = '<span class="badge" style="background:rgba(108,99,255,0.15);color:var(--color-primary-light);padding:4px 12px;font-size:0.85rem;">🏁 Shift Completed</span>';
+                    btnIn.disabled = true; btnIn.style.opacity = '0.4'; btnIn.title = 'Shift Completed';
+                    btnOut.disabled = true; btnOut.style.opacity = '0.4'; btnOut.title = 'Shift Completed';
+                    hist.innerHTML = `
+                        <div class="flex items-center gap-2 text-sm"><span style="color:var(--color-accent-green)">✅</span> IN: ${formatTime(myPunch.punch_in)}</div>
+                        <div class="flex items-center gap-2 text-sm"><span style="color:var(--color-accent-rose)">🔴</span> OUT: ${formatTime(myPunch.punch_out)}</div>
+                        <div class="text-xs text-muted" style="margin-top:4px;">Total Duration: ${formatDuration(myPunch.punch_out - myPunch.punch_in)}</div>
+                    `;
+                }
+
+                // Render dynamic modules
+                const settings = await API.get('/settings');
+                const m = settings.modules;
+                const modsContainer = document.getElementById('dynamic-modules');
+
+                // Clear out existing dynamic buttons to prevent duplicates on reload
+                Array.from(modsContainer.children).forEach(c => {
+                    if (c.textContent.includes('Payslips')) c.remove();
+                });
+
+                if (m.payslips !== 'OFF') {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-secondary';
+                    btn.style.cssText = 'justify-content:flex-start;padding:12px;';
+                    btn.innerHTML = `💰 View Payslips ${m.payslips === 'PREPARE' ? '<span class="badge badge-amber text-xs" style="margin-left:auto;">Coming soon</span>' : ''}`;
+                    btn.onclick = () => { if (m.payslips === 'PREPARE') toast('This module is being prepared', 'info'); else toast('Payslips loaded!', 'success'); };
+                    modsContainer.appendChild(btn);
+                }
+            } catch (e) { }
+        }
+
+        async function smartPunch(type) {
+            if (isPunching) return;
+            isPunching = true;
+
+            const btn = type === 'in' ? document.getElementById('btn-punch-in') : document.getElementById('btn-punch-out');
+            const originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-sm"></span>';
+
+            // Shift Reason Logic
+            if (type === 'out') {
+                const nowTime = getLocalTime();
+                let showModal = false;
+                
+                if (u.shift_end) {
+                    if (nowTime < u.shift_end) {
+                        // Before Shift End
+                        document.getElementById('modal-title').textContent = '⚠️ Early Checkout?';
+                        document.getElementById('modal-desc').textContent = 'You are attempting to punch out before your scheduled shift end. Please provide a reason.';
+                        document.getElementById('modal-reason-label').textContent = 'Reason for Early Departure';
+                        showModal = true;
+                    } else {
+                        // Check if > 2 hours after shift end
+                        const [h, m] = u.shift_end.split(':').map(Number);
+                        const shiftEndMinutes = h * 60 + m;
+                        const [nowH, nowM] = nowTime.split(':').map(Number);
+                        const nowMinutes = nowH * 60 + nowM;
+                        
+                        if (nowMinutes > shiftEndMinutes + 120) {
+                            document.getElementById('modal-title').textContent = '⚠️ Late Checkout?';
+                            document.getElementById('modal-desc').textContent = 'You are punching out more than 2 hours after your shift end. Please provide a reason.';
+                            document.getElementById('modal-reason-label').textContent = 'Reason for Late Checkout';
+                            showModal = true;
+                        }
+                    }
+                }
+
+                if (showModal) {
+                    document.getElementById('early-leave-modal').classList.add('open');
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                    isPunching = false;
+                    return;
+                }
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => executePunch(type, pos.coords.latitude, pos.coords.longitude, btn, originalContent),
+                    err => {
+                        toast('Location access required for punch', 'error');
+                        btn.disabled = false; btn.innerHTML = originalContent;
+                        isPunching = false;
+                    }
+                );
+            } else {
+                executePunch(type, null, null, btn, originalContent);
+            }
+        }
+
+        function closeAllModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+            isPunching = false;
+        }
+
+        function toggleOtherReason(val) {
+            document.getElementById('other-reason-div').style.display = (val === 'Other') ? 'block' : 'none';
+        }
+
+        async function submitEarlyPunchOut() {
+            const select = document.getElementById('early-reason-select');
+            const text = document.getElementById('early-reason-text');
+            const reason = select.value === 'Other' ? text.value : select.value;
+
+            if (select.value === 'Other' && !text.value.trim()) {
+                return toast('Please specify a reason', 'error');
+            }
+
+            const btn = document.getElementById('btn-submit-early');
+            btn.disabled = true; btn.textContent = 'Processing...';
+
+            const sendPunch = async (lat = null, lng = null) => {
+                try {
+                    await API.post('/attendance/punch', { 
+                        type: 'out', 
+                        lat: lat, 
+                        lng: lng,
+                        reason: reason
+                    });
+                    toast('✅ Early punch out recorded', 'success');
+                    closeAllModals();
+                    await loadDashboard();
+                } catch (e) { 
+                    toast(e.message, 'error'); 
+                } finally { 
+                    btn.disabled = false; 
+                    btn.textContent = 'Submit & Punch Out'; 
+                }
+            };
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => sendPunch(pos.coords.latitude, pos.coords.longitude),
+                    err => {
+                        toast('Location access required', 'error');
+                        btn.disabled = false; btn.textContent = 'Submit & Punch Out';
+                    },
+                    { timeout: 10000 }
+                );
+            } else {
+                sendPunch();
+            }
+        }
+
+        async function executePunch(type, lat, lng, btn, originalContent) {
+            try {
+                const res = await API.post('/attendance/punch', { type, lat, lng });
+                toast(`✅ Punched ${type} at ${formatTime(res.timestamp)}`, 'success');
+                await loadDashboard();
+            } catch (e) { 
+                toast(e.message, 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                }
+            } finally {
+                isPunching = false;
+            }
+        }
+        function openLeaveModal() { 
+            closeAllModals();
+            document.getElementById('leave-modal').classList.add('open'); 
+        }
+        async function submitLeave() {
+            const type = document.getElementById('l-type').value, start = document.getElementById('l-start').value, end = document.getElementById('l-end').value, reason = document.getElementById('l-reason').value;
+            if (!start || !end) { toast('Dates required', 'error'); return; }
+            try { await API.post('/leave/apply', { leave_type: type, start_date: start, end_date: end, reason }); toast('Leave application submitted', 'success'); closeAllModals(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        function previewProfilePhoto(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    document.getElementById('p-photo-preview').innerHTML = `<img src="${e.target.result}" style="width:100%; height:100%; object-fit:cover;">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function openProfileModal() {
+            closeAllModals();
+            try {
+                const data = await API.get('/users/profile');
+                document.getElementById('p-id').value = data.login_id || '—';
+                document.getElementById('p-role').value = (data.role || 'staff').toUpperCase();
+                document.getElementById('p-name').value = data.full_name || '';
+                document.getElementById('p-phone').value = data.phone || '';
+                document.getElementById('p-cnic').value = data.cnic || 'Not set';
+                document.getElementById('p-address').value = data.address || '';
+                document.getElementById('p-emergency').value = data.emergency_contact || '';
+                document.getElementById('p-language').value = data.preferred_language || 'English';
+                document.getElementById('p-photo-input').value = '';
+                
+                const preview = document.getElementById('p-photo-preview');
+                if (data.photo) {
+                    preview.innerHTML = `<img src="${data.photo}" style="width:100%; height:100%; object-fit:cover;">`;
+                } else {
+                    preview.textContent = avatarLetter(data.full_name || 'U');
+                }
+                
+                document.getElementById('profile-modal').classList.add('open');
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function submitProfile() {
+            const phone = document.getElementById('p-phone').value.trim();
+            const fullName = document.getElementById('p-name').value.trim();
+            
+            if (!fullName) return toast('Full name is required', 'error');
+            if (phone && !/^03\d{9}$/.test(phone.replace(/-/g, ''))) {
+                return toast('Invalid phone format. Use 03xxxxxxxxx', 'error');
+            }
+
+            const payload = {
+                full_name: fullName,
+                phone: phone,
+                address: document.getElementById('p-address').value,
+                emergency_contact: document.getElementById('p-emergency').value,
+                preferred_language: document.getElementById('p-language').value
+            };
+            
+            const photoFile = document.getElementById('p-photo-input').files[0];
+            if (photoFile) {
+                if (photoFile.size > 1024 * 1024) return toast('Photo too large! Max 1MB allowed.', 'error');
+                payload.photo = await toBase64(photoFile);
+            }
+
+            const btn = document.querySelector('#profile-modal .btn-primary');
+            const originalText = btn.textContent;
+            btn.disabled = true; btn.textContent = 'Saving...';
+
+            try {
+                await API.patch('/users/profile', payload);
+                toast('✅ Profile updated successfully', 'success');
+                closeAllModals();
+                location.reload(); // Refresh to show new photo everywhere
+            } catch (e) { toast(e.message, 'error'); }
+            finally { btn.disabled = false; btn.textContent = originalText; }
+        }
+
+        function toBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        function logout() { localStorage.clear(); window.location.href = '/'; }
+
+        async function checkEnrollment() {
+            try {
+                const p = await API.get('/users/profile');
+                if (!p.is_face_enrolled) {
+                    const hero = document.querySelector('.hero-panel');
+                    const alert = document.createElement('div');
+                    alert.className = 'badge badge-amber';
+                    alert.style.cssText = 'margin-top:10px; cursor:pointer; padding:8px 12px; font-size:0.9rem;';
+                    alert.innerHTML = '⚠️ Action Required: Setup Face Punch Attendance';
+                    alert.onclick = executeEnrollment;
+                    hero.appendChild(alert);
+                }
+            } catch (e) { }
+        }
+
+        loadDashboard();
+        checkEnrollment();
+    </script>
+</body>
+
+</html>

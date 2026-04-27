@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Attendance — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <style>
+        .attendance-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-4);
+            margin-bottom: var(--space-5);
+        }
+
+        .att-stat {
+            background: var(--bg-600);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+            text-align: center;
+        }
+
+        .att-stat .val {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 800;
+        }
+
+        .att-stat .lbl {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body class="gradient-mesh">
+    <div class="admin-layout" id="app"></div>
+
+    <!-- Mark Attendance Modal -->
+    <div class="modal-overlay" id="mark-modal">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header">
+                <h3>✍️ Mark Attendance</h3><button class="btn-close"
+                    onclick="document.getElementById('mark-modal').classList.remove('open')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group"><label class="form-label">User ID</label><input class="form-control"
+                        id="m-user-id" type="number" readonly></div>
+                <div class="form-group"><label class="form-label">User Name</label><input class="form-control"
+                        id="m-user-name" readonly></div>
+                <div class="form-group"><label class="form-label">Status</label>
+                    <select class="form-control" id="m-status">
+                        <option value="present">Present</option>
+                        <option value="late">Late</option>
+                        <option value="absent">Absent</option>
+                        <option value="half-day">Half Day</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="form-label">Date</label><input class="form-control" id="m-date"
+                        type="date"></div>
+                <div class="form-group"><label class="form-label">Notes</label><input class="form-control" id="m-notes"
+                        placeholder="Optional notes..."></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary"
+                    onclick="document.getElementById('mark-modal').classList.remove('open')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitMark()">Save Attendance</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        document.getElementById('app').innerHTML = `
+    ${getSidebarHTML('attendance')}
+    <main class="main-content">
+      ${getTopbarHTML('Live Attendance')}
+      <div class="page-content">
+        <div class="flex items-center justify-between" style="margin-bottom:var(--space-6);">
+          <div class="flex items-center gap-3"><div class="pulse-dot green"></div><span class="text-sm text-muted">Live · Auto-refreshes every 30s</span></div>
+          <div class="flex gap-3">
+            <input class="form-control" type="date" id="report-date" style="width:170px;padding:8px 12px;" onchange="loadAll()">
+            <button class="btn btn-secondary" onclick="loadAll()">🔄 Refresh</button>
+          </div>
+        </div>
+
+        <div class="tabs" style="margin-bottom:var(--space-6);">
+          <button class="tab-btn active" onclick="switchTab('teachers',this)">👨‍🏫 Teachers</button>
+          <button class="tab-btn" onclick="switchTab('students',this)">🎓 Students</button>
+          <button class="tab-btn" onclick="switchTab('workers',this)">👷 Workers</button>
+          <button class="tab-btn" onclick="switchTab('visitors',this)">🚪 Visitors</button>
+        </div>
+
+        <div id="tab-teachers"></div>
+        <div id="tab-students" style="display:none;"></div>
+        <div id="tab-workers"  style="display:none;"></div>
+        <div id="tab-visitors" style="display:none;"></div>
+      </div>
+    </main>`;
+
+        initAdminLayout('/admin/attendance.html');
+        document.getElementById('report-date').value = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+
+        let liveData = { teachers: [], students: [], workers: [], visitors: [] };
+        let currentTab = 'teachers';
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            ['teachers', 'students', 'workers', 'visitors'].forEach(t => { document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none'; });
+            currentTab = tab;
+        }
+
+        async function loadAll() {
+            try {
+                const date = document.getElementById('report-date').value;
+                const [report, visitors] = await Promise.all([
+                    API.get(`/attendance/daily-report?date=${date}`),
+                    API.get('/visitors/active')
+                ]);
+                liveData.teachers = report.filter(r => r.role === 'teacher');
+                liveData.students = report.filter(r => r.role === 'student');
+                liveData.workers = report.filter(r => r.role === 'worker');
+                liveData.visitors = visitors;
+                renderTeachers(); renderStudents(); renderWorkers(); renderVisitors();
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        function buildStats(data) {
+            const present = data.filter(r => r.punch_in && r.status !== 'absent').length;
+            const absent = data.filter(r => !r.punch_in || r.status === 'absent').length;
+            const late = data.filter(r => r.status === 'late').length;
+            return `<div class="attendance-stats">
+      <div class="att-stat"><div class="val" style="color:var(--color-accent-green);">${present}</div><div class="lbl">Present</div></div>
+      <div class="att-stat"><div class="val" style="color:var(--color-accent-rose);">${absent}</div><div class="lbl">Absent</div></div>
+      <div class="att-stat"><div class="val" style="color:var(--color-accent-amber);">${late}</div><div class="lbl">Late</div></div>
+    </div>`;
+        }
+
+        function renderTeachers() {
+            const el = document.getElementById('tab-teachers');
+            const d = liveData.teachers;
+            el.innerHTML = `${buildStats(d)}<div class="table-container"><table class="data-table"><thead><tr><th>Teacher</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Out Method</th><th>Duration</th><th>Actions</th></tr></thead><tbody>
+      ${d.map(r => {
+                const st = r.punch_in ? (r.punch_out ? 'Out' : r.status === 'late' ? 'Late' : 'In') : 'Absent';
+                const cls = { 'In': 'badge-green', 'Out': 'badge-blue', 'Late': 'badge-amber', 'Absent': 'badge-red' }[st];
+                const dur = r.punch_in && r.punch_out ? formatDuration(r.punch_out - r.punch_in) : r.punch_in ? `${Math.floor((Date.now() / 1000 - r.punch_in) / 60)}m (live)` : '—';
+                const methodBadge = r.is_manual ? '<span class="badge badge-amber">Admin</span>' : r.method === 'system_auto' ? '<span class="text-muted">Auto</span>' : (r.method === 'manual' ? '<span class="badge badge-purple" style="opacity:0.8">Manual</span>' : '—');
+                return `<tr><td><div class="flex items-center gap-3"><div class="avatar" style="background:var(--color-primary);color:#fff; font-size:0.85rem;">${avatarLetter(r.full_name)}</div><div><div class="font-semibold">${r.full_name}</div><div class="text-xs text-muted">${r.login_id}</div></div></div></td>
+          <td><span class="badge ${cls}">${st}</span></td>
+          <td>${formatTime(r.punch_in)}</td>
+          <td>${formatTime(r.punch_out)}</td>
+          <td class="text-sm text-center">${r.punch_out ? methodBadge : '—'}</td>
+          <td class="text-sm">${dur}</td>
+          <td><button class="btn btn-sm btn-secondary" onclick="openMark(${r.id || 0},'${r.full_name}')">✍️ Mark</button></td>
+        </tr>`;
+            }).join('')}
+    </tbody></table></div>`;
+        }
+
+        function renderStudents() {
+            const el = document.getElementById('tab-students');
+            const d = liveData.students;
+            el.innerHTML = `${buildStats(d)}<div class="table-container"><table class="data-table"><thead><tr><th>Student</th><th>Class</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Out Method</th><th>Actions</th></tr></thead><tbody>
+      ${d.map(r => {
+                const st = r.punch_in ? (r.punch_out ? 'Out' : r.status === 'late' ? 'Late' : 'In') : 'Absent';
+                const cls = { 'In': 'badge-green', 'Out': 'badge-blue', 'Late': 'badge-amber', 'Absent': 'badge-red' }[st];
+                const methodBadge = r.is_manual ? '<span class="badge badge-amber">Admin</span>' : r.method === 'system_auto' ? '<span class="text-muted">Auto</span>' : (r.method === 'manual' ? '<span class="badge badge-purple" style="opacity:0.8">Manual</span>' : '—');
+                return `<tr><td><div class="flex items-center gap-3"><div class="avatar" style="background:var(--color-student);color:#111;font-size:0.85rem;">${avatarLetter(r.full_name)}</div><div><div class="font-semibold">${r.full_name}</div><div class="text-xs text-muted">${r.login_id}</div></div></div></td>
+          <td><span class="badge badge-blue text-xs">${r.class_name || '—'}</span></td>
+          <td><span class="badge ${cls}">${st}</span></td>
+          <td>${formatTime(r.punch_in)}</td>
+          <td>${formatTime(r.punch_out)}</td>
+          <td class="text-sm text-center">${r.punch_out ? methodBadge : '—'}</td>
+          <td><button class="btn btn-sm btn-secondary" onclick="openMark(${r.id || 0},'${r.full_name}')">✍️ Mark</button></td>
+        </tr>`;
+            }).join('')}
+    </tbody></table></div>`;
+        }
+
+        function renderWorkers() {
+            const el = document.getElementById('tab-workers');
+            const d = liveData.workers;
+            el.innerHTML = `${buildStats(d)}<div class="table-container"><table class="data-table"><thead><tr><th>Worker</th><th>Status</th><th>Punch In</th><th>Punch Out</th><th>Out Method</th><th>Hours</th><th>Actions</th></tr></thead><tbody>
+      ${d.map(r => {
+                const st = r.punch_in ? (r.punch_out ? 'Out' : 'In') : 'Absent';
+                const cls = { 'In': 'badge-green', 'Out': 'badge-blue', 'Absent': 'badge-red' }[st];
+                const dur = r.punch_in && r.punch_out ? formatDuration(r.punch_out - r.punch_in) : '—';
+                const methodBadge = r.is_manual ? '<span class="badge badge-amber">Admin</span>' : r.method === 'system_auto' ? '<span class="text-muted">Auto</span>' : (r.method === 'manual' ? '<span class="badge badge-purple" style="opacity:0.8">Manual</span>' : '—');
+                return `<tr><td><div class="flex items-center gap-3"><div class="avatar" style="background:var(--color-worker);color:#111;font-size:0.85rem;">${avatarLetter(r.full_name)}</div><div><div class="font-semibold">${r.full_name}</div><div class="text-xs text-muted">${r.login_id}</div></div></div></td>
+          <td><span class="badge ${cls}">${st}</span></td>
+          <td>${formatTime(r.punch_in)}</td>
+          <td>${formatTime(r.punch_out)}</td>
+          <td class="text-sm text-center">${r.punch_out ? methodBadge : '—'}</td>
+          <td class="text-sm">${dur}</td>
+          <td><button class="btn btn-sm btn-secondary" onclick="openMark(${r.id || 0},'${r.full_name}')">✍️ Mark</button></td>
+        </tr>`;
+            }).join('')}
+    </tbody></table></div>`;
+        }
+
+        function renderVisitors() {
+            const el = document.getElementById('tab-visitors');
+            const d = liveData.visitors;
+            el.innerHTML = `<div class="table-container"><div class="table-header"><h3>🚪 Visitors Inside (${d.length})</h3><a href="/visitor/checkin.html" target="_blank" class="btn btn-primary btn-sm">➕ New Check-In</a></div>
+      <table class="data-table"><thead><tr><th>Visitor</th><th>Purpose</th><th>Host</th><th>Check-In</th><th>Duration</th><th>Actions</th></tr></thead><tbody>
+      ${d.length ? d.map(v => {
+                const dur = Math.floor((Date.now() / 1000 - v.check_in) / 60);
+                const cls = dur > 240 ? 'badge-red' : dur > 120 ? 'badge-amber' : 'badge-green';
+                return `<tr><td><div class="font-semibold">${v.full_name}</div><div class="text-xs text-muted">${v.phone}</div></td>
+          <td>${v.purpose}</td><td>${v.host_name || '—'}</td><td>${formatTime(v.check_in)}</td>
+          <td><span class="badge ${cls}">${dur}m</span></td>
+          <td><button class="btn btn-sm btn-success" onclick="checkOutV(${v.id},'${v.full_name}')">✅ Check Out</button></td>
+        </tr>`;
+            }).join('') : '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">No visitors currently inside</td></tr>'}
+      </tbody></table></div>`;
+        }
+
+        function openMark(id, name) {
+            document.getElementById('m-user-id').value = id;
+            document.getElementById('m-user-name').value = name;
+            document.getElementById('m-date').value = document.getElementById('report-date').value;
+            document.getElementById('mark-modal').classList.add('open');
+        }
+
+        async function submitMark() {
+            const payload = { user_id: parseInt(document.getElementById('m-user-id').value), status: document.getElementById('m-status').value, date: document.getElementById('m-date').value, notes: document.getElementById('m-notes').value };
+            try { await API.post('/attendance/mark', payload); toast('Attendance marked', 'success'); document.getElementById('mark-modal').classList.remove('open'); loadAll(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function checkOutV(id, name) {
+            try { await API.post(`/visitors/checkout/${id}`); toast(`${name} checked out`, 'success'); loadAll(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        loadAll();
+        setInterval(loadAll, 30000);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Profile — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <style>
+        body {
+            background: var(--bg-900);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .gallery-header {
+            text-align: center;
+            padding: var(--space-8) var(--space-4);
+            background: linear-gradient(to bottom, rgba(108, 99, 255, 0.1), transparent);
+        }
+
+        .gallery-title {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: var(--space-2);
+        }
+
+        .gallery-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: var(--space-5);
+            padding: var(--space-6);
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .profile-card {
+            background: var(--bg-700);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-xl);
+            padding: var(--space-5);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeInUp 0.4s ease backwards;
+        }
+
+        .profile-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--color-primary);
+            box-shadow: 0 10px 20px rgba(108, 99, 255, 0.15);
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--bg-600);
+            margin: 0 auto var(--space-4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            overflow: hidden;
+            border: 2px solid var(--border-strong);
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-name {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+
+        .profile-id {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono, monospace);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="topbar"
+        style="padding: 16px 40px; border-bottom: 1px solid var(--border-subtle); background:var(--bg-800)">
+        <a href="/" style="text-decoration:none; color:inherit;" class="flex items-center gap-3">
+            <div class="nav-logo-icon"
+                style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--color-primary),var(--color-accent-teal));display:flex;align-items:center;justify-content:center;font-size:1.2rem;">
+                🎓</div>
+            <div class="font-semibold text-lg">ClickTake Academy</div>
+        </a>
+        <button class="btn btn-secondary btn-sm" onclick="window.history.back()">← Back</button>
+    </div>
+
+    <div class="gallery-header">
+        <h1 class="gallery-title">Who are you?</h1>
+        <p class="gallery-subtitle" id="gallery-subtitle">Loading profiles...</p>
+        
+        <div style="max-width:400px; margin: var(--space-6) auto 0; position:relative;">
+            <input type="text" id="gallery-search" class="form-control" placeholder="Search by name, ID or phone..." 
+                   style="padding-left:45px; border-radius:var(--radius-full); height:50px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <span style="position:absolute; left:18px; top:13px; font-size:1.2rem; opacity:0.5;">🔍</span>
+        </div>
+    </div>
+
+    <div class="gallery-grid" id="gallery-grid">
+        <!-- Profiles rendered here -->
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const role = urlParams.get('role');
+
+        if (!['teacher', 'student', 'worker'].includes(role)) {
+            window.location.href = '/';
+        }
+
+        const roleCap = role.charAt(0).toUpperCase() + role.slice(1);
+        document.getElementById('gallery-subtitle').textContent = `Select your ${roleCap} profile to log in`;
+        document.title = `${roleCap} Gallery — ClickTake Academy`;
+
+        let allProfiles = [];
+        async function loadGallery() {
+            try {
+                allProfiles = await API.get(`/auth/gallery/${role}`);
+                renderGrid(allProfiles);
+                
+                // Search event
+                const searchInput = document.getElementById('gallery-search');
+                searchInput.addEventListener('input', debounce(() => {
+                    const query = searchInput.value.toLowerCase();
+                    const filtered = allProfiles.filter(u => 
+                        u.full_name.toLowerCase().includes(query) || 
+                        u.login_id.toLowerCase().includes(query) ||
+                        (u.phone && u.phone.includes(query)) ||
+                        (u.class_name && u.class_name.toLowerCase().includes(query))
+                    );
+                    renderGrid(filtered);
+                }, 300));
+
+            } catch (e) {
+                document.getElementById('gallery-grid').innerHTML = `<div style="grid-column: 1/-1; text-align:center; color:var(--color-accent-rose);">Error loading profiles</div>`;
+            }
+        }
+
+        function renderGrid(data) {
+            const grid = document.getElementById('gallery-grid');
+            if (data.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 40px; color:var(--text-muted);">No matching profiles found.</div>`;
+                return;
+            }
+
+            grid.innerHTML = data.map((u, i) => `
+                <div class="profile-card" style="animation-delay: ${i * 0.05}s" onclick="selectProfile('${u.login_id}')" tabindex="0" role="button">
+                    <div class="profile-avatar" style="--role-color: ${role === 'student' ? '#00D2D3' : role === 'worker' ? '#2ED573' : '#6C63FF'}">
+                        ${u.photo ? `<img src="${u.photo}" alt="${u.full_name}">` : avatarLetter(u.full_name)}
+                    </div>
+                    <div class="profile-name">${u.full_name}</div>
+                    <div class="profile-id">${u.login_id}</div>
+                </div>
+            `).join('');
+
+            // Add keyboard support
+            document.querySelectorAll('.profile-card').forEach(card => {
+                card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') card.click(); });
+            });
+        }
+
+        function debounce(func, timeout = 300) {
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => { func.apply(this, args); }, timeout);
+            };
+        }
+
+        function selectProfile(loginId) {
+            window.location.href = `/login.html?role=${role}&id=${encodeURIComponent(loginId)}`;
+        }
+
+        loadGallery();
+    </script>
+</body>
+
+</html>

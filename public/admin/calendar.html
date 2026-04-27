@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar & Timetable | ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <style>
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: var(--bg-700);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--bg-700);
+        }
+        .calendar-day-header {
+            background: var(--bg-800);
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .calendar-cell {
+            background: var(--bg-900);
+            min-height: 120px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .calendar-cell:hover { background: var(--bg-800); }
+        .calendar-cell.today { background: rgba(108, 99, 255, 0.05); }
+        
+        .timetable-item {
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+        }
+        .timetable-item:hover { transform: scale(1.02); z-index: 10; }
+        .timetable-item .time { font-weight: bold; display: block; opacity: 0.9; }
+        .timetable-item .subject { font-weight: 600; }
+        .timetable-item .teacher { font-size: 0.7rem; opacity: 0.8; }
+
+        .cat-class { background: var(--color-primary); }
+        .cat-exam { background: var(--color-accent-rose); }
+        .cat-event { background: var(--color-accent-teal); }
+
+        .fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            cursor: pointer;
+            border: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="gradient-mesh">
+    <div class="admin-layout" id="app">
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <main class="main-content">
+            <div id="topbar-placeholder"></div>
+            <div class="page-content">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 class="text-2xl font-bold">📅 Timetable Manager</h1>
+                        <p class="text-secondary text-sm">Schedule classes, exams, and events</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAddModal()">
+                        <span>+ Add Schedule</span>
+                    </button>
+                </div>
+
+            <div class="stats-grid" style="margin-bottom:var(--space-6);">
+                <div class="stat-card">
+                    <div class="stat-label">Country Config</div>
+                    <div class="stat-value" id="s-country">Pakistan</div>
+                    <div class="text-xs text-secondary mt-1" id="s-timezone">UTC+5 (Karachi)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Classes</div>
+                    <div class="stat-value" id="s-active-classes">0</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex gap-2">
+                        <select class="form-control" id="f-class" onchange="loadTimetable()" style="width:150px;">
+                            <option value="">All Classes</option>
+                        </select>
+                        <select class="form-control" id="f-teacher" onchange="loadTimetable()" style="width:180px;">
+                            <option value="">All Teachers</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-secondary btn-sm" onclick="prevWeek()">‹</button>
+                        <span class="font-bold" id="current-period">April 2026</span>
+                        <button class="btn btn-secondary btn-sm" onclick="nextWeek()">›</button>
+                    </div>
+                </div>
+
+                <div class="calendar-grid">
+                    <div class="calendar-day-header">Mon</div>
+                    <div class="calendar-day-header">Tue</div>
+                    <div class="calendar-day-header">Wed</div>
+                    <div class="calendar-day-header">Thu</div>
+                    <div class="calendar-day-header">Fri</div>
+                    <div class="calendar-day-header">Sat</div>
+                    <div class="calendar-day-header">Sun</div>
+
+                    <div class="calendar-cell" id="day-Mon"></div>
+                    <div class="calendar-cell" id="day-Tue"></div>
+                    <div class="calendar-cell" id="day-Wed"></div>
+                    <div class="calendar-cell" id="day-Thu"></div>
+                    <div class="calendar-cell" id="day-Fri"></div>
+                    <div class="calendar-cell" id="day-Sat"></div>
+                    <div class="calendar-cell" id="day-Sun"></div>
+                </div>
+            </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Schedule Modal -->
+    <div class="modal-overlay" id="add-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📅 Add Schedule Entry</h3>
+                <button class="btn-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Class Name <span class="req">*</span></label>
+                        <input type="text" class="form-control" id="m-class" placeholder="e.g. Grade 10">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Subject</label>
+                        <input type="text" class="form-control" id="m-subject" placeholder="e.g. Mathematics">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Teacher</label>
+                    <select class="form-control" id="m-teacher">
+                        <option value="">Select Teacher</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Day <span class="req">*</span></label>
+                        <select class="form-control" id="m-day">
+                            <option value="Mon">Monday</option>
+                            <option value="Tue">Tuesday</option>
+                            <option value="Wed">Wednesday</option>
+                            <option value="Thu">Thursday</option>
+                            <option value="Fri">Friday</option>
+                            <option value="Sat">Saturday</option>
+                            <option value="Sun">Sunday</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Room</label>
+                        <input type="text" class="form-control" id="m-room" placeholder="e.g. Lab 1">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Start Time <span class="req">*</span></label>
+                        <input type="time" class="form-control" id="m-start">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">End Time <span class="req">*</span></label>
+                        <input type="time" class="form-control" id="m-end">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveSchedule()">Save Entry</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        if (!requireAuth(['admin'])) { }
+        
+        async function init() {
+            document.getElementById('topbar-placeholder').innerHTML = getTopbarHTML('Calendar');
+            await loadSidebar();
+            await loadFilters();
+            await loadTimetable();
+            await loadConfig();
+        }
+
+        async function loadConfig() {
+            const settings = await API.get('/settings');
+            document.getElementById('s-country').textContent = settings.country || 'Pakistan';
+            document.getElementById('s-timezone').textContent = settings.timezone || 'Asia/Karachi';
+        }
+
+        async function loadFilters() {
+            try {
+                const users = await API.get('/users');
+                const teachers = users.filter(u => u.role === 'teacher');
+                const tSelect = document.getElementById('f-teacher');
+                const mTeacher = document.getElementById('m-teacher');
+                
+                teachers.forEach(t => {
+                    const opt = `<option value="${t.id}">${t.full_name}</option>`;
+                    tSelect.innerHTML += opt;
+                    mTeacher.innerHTML += opt;
+                });
+
+                const classes = [...new Set(users.filter(u => u.role === 'student').map(u => u.class_name).filter(Boolean))];
+                const cSelect = document.getElementById('f-class');
+                classes.forEach(c => {
+                    cSelect.innerHTML += `<option value="${c}">${c}</option>`;
+                });
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function loadTimetable() {
+            const class_name = document.getElementById('f-class').value;
+            const teacher_id = document.getElementById('f-teacher').value;
+            
+            try {
+                const data = await API.get(`/timetable?class_name=${class_name}&teacher_id=${teacher_id}`);
+                renderTimetable(data);
+                document.getElementById('s-active-classes').textContent = data.length;
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        function renderTimetable(data) {
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const todayIndex = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Karachi"})).getDay();
+            const todayDay = days[todayIndex];
+
+            ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(day => {
+                const cell = document.getElementById(`day-${day}`);
+                cell.innerHTML = '';
+                cell.classList.toggle('today', day === todayDay);
+            });
+
+            data.forEach(item => {
+                const cell = document.getElementById(`day-${item.day_of_week}`);
+                const div = document.createElement('div');
+                div.className = 'timetable-item cat-class';
+                div.innerHTML = `
+                    <span class="time">${item.start_time} - ${item.end_time}</span>
+                    <span class="subject">${item.subject || 'Class'}</span>
+                    <span class="teacher">${item.teacher_name || ''} (${item.room || 'N/A'})</span>
+                    <button class="btn-close" style="position:absolute;top:2px;right:2px;font-size:0.5rem;color:white;opacity:0.5;" onclick="deleteEntry(${item.id}, event)">✕</button>
+                `;
+                cell.appendChild(div);
+            });
+        }
+
+        async function deleteEntry(id, e) {
+            e.stopPropagation();
+            if (!confirm('Delete this entry?')) return;
+            try {
+                await API.delete(`/timetable/${id}`);
+                toast('Entry deleted', 'success');
+                loadTimetable();
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        function openAddModal() { document.getElementById('add-modal').classList.add('open'); }
+        function closeModal() { document.getElementById('add-modal').classList.remove('open'); }
+
+        async function saveSchedule() {
+            const payload = {
+                class_name: document.getElementById('m-class').value,
+                subject: document.getElementById('m-subject').value,
+                teacher_id: document.getElementById('m-teacher').value,
+                day_of_week: document.getElementById('m-day').value,
+                room: document.getElementById('m-room').value,
+                start_time: document.getElementById('m-start').value,
+                end_time: document.getElementById('m-end').value
+            };
+
+            if (!payload.class_name || !payload.start_time || !payload.end_time) {
+                return toast('Please fill required fields', 'error');
+            }
+
+            try {
+                await API.post('/timetable', payload);
+                toast('Schedule entry added', 'success');
+                closeModal();
+                loadTimetable();
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        init();
+    </script>
+</body>
+</html>

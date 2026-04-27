@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitors — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <style>
+        .vis-photo {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: var(--bg-400);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body class="gradient-mesh">
+    <div class="admin-layout" id="app"></div>
+    <div id="toast-container"></div>
+    <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        document.getElementById('app').innerHTML = `
+    ${getSidebarHTML('visitors')}
+    <main class="main-content">
+      ${getTopbarHTML('Visitors')}
+      <div class="page-content">
+        <!-- Stats Row -->
+        <div class="grid-4 stagger-children" style="margin-bottom:var(--space-6);">
+          <div class="stat-card" style="--stat-color:#F7B731"><div class="stat-icon">🚶</div><div class="stat-value" id="s-inside">—</div><div class="stat-label">Currently Inside</div></div>
+          <div class="stat-card" style="--stat-color:#00D2D3"><div class="stat-icon">📅</div><div class="stat-value" id="s-today">—</div><div class="stat-label">Today's Visitors</div></div>
+          <div class="stat-card" style="--stat-color:#2ED573"><div class="stat-icon">⏱️</div><div class="stat-value" id="s-avg">—</div><div class="stat-label">Avg Duration (min)</div></div>
+          <div class="stat-card" style="--stat-color:#6C63FF"><div class="stat-icon">⚠️</div><div class="stat-value" id="s-overdue">0</div><div class="stat-label">Overdue Visitors</div></div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs" style="margin-bottom:var(--space-6);">
+          <button class="tab-btn active" onclick="switchTab('active',this)">🟢 Currently Inside</button>
+          <button class="tab-btn" onclick="switchTab('logs',this)">📋 Historical Logs</button>
+        </div>
+
+        <!-- Active Visitors -->
+        <div id="tab-active" class="table-container">
+          <div class="table-header">
+            <h3>Active Visitors</h3>
+            <div class="flex gap-3">
+              <a href="/visitor/checkin.html" target="_blank" class="btn btn-primary">➕ New Check-In</a>
+              <button class="btn btn-secondary" onclick="loadActive()">🔄 Refresh</button>
+            </div>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>Visitor</th><th>Purpose</th><th>Host</th><th>Check-In</th><th>Duration</th><th>Actions</th></tr></thead>
+            <tbody id="active-tbody"><tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">Loading...</td></tr></tbody>
+          </table>
+        </div>
+
+        <!-- Historical Logs -->
+        <div id="tab-logs" class="table-container" style="display:none;">
+          <div class="table-header">
+            <h3>Visitor Logs</h3>
+            <div class="flex gap-3">
+              <div class="search-bar"><span>🔍</span><input type="text" id="log-search" placeholder="Search name/phone/CNIC..." oninput="loadLogs()"></div>
+              <select class="form-control" style="width:160px;padding:8px 10px;" id="log-purpose" onchange="loadLogs()">
+                <option value="">All Purposes</option>
+                <option>Parent Meeting</option><option>Vendor/Delivery</option><option>Job Interview</option><option>Guest Lecture</option><option>Other</option>
+              </select>
+              <input class="form-control" type="date" id="log-from" style="width:145px;padding:8px;" onchange="loadLogs()">
+              <input class="form-control" type="date" id="log-to" style="width:145px;padding:8px;" onchange="loadLogs()">
+            </div>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>Visitor ID</th><th>Name</th><th>Purpose</th><th>Host</th><th>Check-In</th><th>Check-Out</th><th>Duration</th><th>Actions</th></tr></thead>
+            <tbody id="logs-tbody"><tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">Select filters to load logs</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>`;
+
+        initAdminLayout('/admin/visitors.html');
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-active').style.display = tab === 'active' ? 'block' : 'none';
+            document.getElementById('tab-logs').style.display = tab === 'logs' ? 'block' : 'none';
+            if (tab === 'logs') loadLogs();
+        }
+
+        async function loadStats() {
+            try {
+                const s = await API.get('/visitors/stats');
+                document.getElementById('s-inside').textContent = s.inside_count;
+                document.getElementById('s-today').textContent = s.today_count;
+                document.getElementById('s-avg').textContent = s.avg_duration;
+            } catch (e) { }
+        }
+
+        async function loadActive() {
+            try {
+                const visitors = await API.get('/visitors/active');
+                const tbody = document.getElementById('active-tbody');
+                let overdueCount = 0;
+                if (!visitors.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">No visitors currently inside 🎉</td></tr>'; return; }
+                tbody.innerHTML = visitors.map(v => {
+                    const dur = Math.floor((Date.now() / 1000 - v.check_in) / 60);
+                    const cls = dur > 240 ? 'badge-red' : dur > 120 ? 'badge-amber' : 'badge-green';
+                    if (dur > 240) overdueCount++;
+                    return `<tr>
+          <td><div class="flex items-center gap-3">
+            <div class="vis-photo">${(v.full_name[0] || '?').toUpperCase()}</div>
+            <div><div class="font-semibold">${v.full_name}</div><div class="text-xs text-muted">${v.phone}</div></div>
+          </div></td>
+          <td><span class="badge badge-blue">${v.purpose}</span></td>
+          <td>${v.host_name || '—'}</td>
+          <td class="text-sm">${formatTime(v.check_in)}</td>
+          <td><span class="badge ${cls}">${dur}m</span></td>
+          <td><div class="flex gap-2">
+            <button class="btn btn-sm btn-success" onclick="checkout(${v.id},'${v.full_name}')">✅ Check Out</button>
+            <button class="btn btn-sm btn-danger" onclick="blacklist(${v.id},'${v.full_name}')">🚫 Blacklist</button>
+          </div></td>
+        </tr>`;
+                }).join('');
+                document.getElementById('s-overdue').textContent = overdueCount;
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function loadLogs() {
+            try {
+                const search = document.getElementById('log-search').value;
+                const purpose = document.getElementById('log-purpose').value;
+                const from = document.getElementById('log-from').value;
+                const to = document.getElementById('log-to').value;
+                const params = new URLSearchParams();
+                if (search) params.append('search', search);
+                if (purpose) params.append('purpose', purpose);
+                if (from) params.append('from', from);
+                if (to) params.append('to', to);
+                const logs = await API.get(`/visitors/logs?${params}`);
+                const tbody = document.getElementById('logs-tbody');
+                if (!logs.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">No records found</td></tr>'; return; }
+                tbody.innerHTML = logs.map(v => `<tr>
+        <td class="text-xs text-muted">${v.visitor_id}</td>
+        <td><div><div class="font-semibold">${v.full_name}</div><div class="text-xs text-muted">${v.cnic || v.phone}</div></div></td>
+        <td>${v.purpose}</td>
+        <td>${v.host_name || '—'}</td>
+        <td class="text-sm">${formatDate(v.check_in)} ${formatTime(v.check_in)}</td>
+        <td class="text-sm">${v.check_out ? formatTime(v.check_out) : '<span class="badge badge-amber">Still Inside</span>'}</td>
+        <td>${v.duration_mins ? v.duration_mins + 'm' : '—'}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="blacklist(${v.id},'${v.full_name}')">🚫 Block</button></td>
+      </tr>`).join('');
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function checkout(id, name) {
+            const stars = prompt(`Check out ${name}?\nRate their experience (1-5 stars, optional):`);
+            try { await API.post(`/visitors/checkout/${id}`, { feedback_stars: stars ? parseInt(stars) : null }); toast(`${name} checked out`, 'success'); loadActive(); loadStats(); } catch (e) { toast(e.message, 'error'); }
+        }
+        async function blacklist(id, name) {
+            if (!confirm(`Blacklist ${name}? They will not be allowed future check-ins.`)) return;
+            try { await API.post(`/visitors/${id}/blacklist`); toast(`${name} blacklisted`, 'warning'); loadActive(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        loadStats(); loadActive();
+        setInterval(() => { loadActive(); loadStats(); }, 30000);
+    </script>
+</body>
+
+</html>

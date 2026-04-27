@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClickTake Academy — Management System</title>
+  <meta name="description"
+    content="Academy Management System powered by ClickTake Technologies. Manage students, teachers, attendance, and visitors in one place.">
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/animations.css">
+  <style>
+    body {
+      overflow-x: hidden;
+    }
+
+    /* ── Hero Section ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-8) var(--space-6);
+      position: relative;
+      background:
+        radial-gradient(ellipse 70% 50% at 15% 15%, rgba(108, 99, 255, 0.2) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 85% 80%, rgba(0, 210, 211, 0.15) 0%, transparent 55%),
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(247, 183, 49, 0.06) 0%, transparent 50%),
+        var(--bg-900);
+    }
+
+    /* ── Floating Grid Lines ── */
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    }
+
+    /* ── Top Navbar ── */
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 40px;
+      background: rgba(10, 11, 30, 0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-logo-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-accent-teal));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .nav-logo-text {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1rem;
+      line-height: 1.2;
+    }
+
+    .nav-logo-text small {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-time {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .admin-login-btn {
+      padding: 8px 18px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .admin-login-btn:hover {
+      background: var(--bg-glass-hover);
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+    }
+
+    /* ── Hero Content ── */
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: var(--radius-full);
+      background: rgba(108, 99, 255, 0.12);
+      border: 1px solid rgba(108, 99, 255, 0.3);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--color-primary-light);
+      margin-bottom: var(--space-5);
+      letter-spacing: 0.5px;
+      animation: fadeInDown 0.6s ease forwards;
+    }
+
+    .hero-title {
+      text-align: center;
+      margin-bottom: var(--space-4);
+      animation: fadeInUp 0.6s ease 0.1s both;
+    }
+
+    .hero-title h1 {
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      line-height: 1.1;
+    }
+
+    .hero-sub {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      max-width: 520px;
+      margin-bottom: var(--space-12);
+      animation: fadeInUp 0.6s ease 0.2s both;
+    }
+
+    /* ── Role Cards Grid ── */
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-6);
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: var(--space-12);
+    }
+
+    .role-card {
+      background: linear-gradient(135deg, var(--bg-600) 0%, var(--bg-500) 100%);
+      border: 1px solid var(--border-subtle);
+      opacity: 0;
+    }
+
+    .role-card:nth-child(1) {
+      animation: card-appear 0.6s ease 0.3s forwards;
+    }
+
+    .role-card:nth-child(2) {
+      animation: card-appear 0.6s ease 0.45s forwards;
+    }
+
+    .role-card:nth-child(3) {
+      animation: card-appear 0.6s ease 0.6s forwards;
+    }
+
+    /* Student Card */
+    .role-card-student {
+      --role-color: #00D2D3;
+    }
+
+    /* Teacher Card */
+    .role-card-teacher {
+      --role-color: #6C63FF;
+    }
+
+    /* Visitor Card */
+    .role-card-visitor {
+      --role-color: #F7B731;
+    }
+
+    .role-features {
+      list-style: none;
+      text-align: left;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .role-features li {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .role-features li::before {
+      content: '✓';
+      color: var(--role-color);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .role-divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border-subtle);
+    }
+
+    /* ── Stats Row ── */
+    .stats-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-8);
+      padding: var(--space-5) var(--space-8);
+      border-radius: var(--radius-xl);
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(12px);
+      animation: fadeInUp 0.6s ease 0.8s both;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-item .val {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .stat-item .lbl {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .stats-divider {
+      width: 1px;
+      height: 40px;
+      background: var(--border-subtle);
+    }
+
+    /* ── Footer ── */
+    .hero-footer {
+      margin-top: auto;
+      padding: var(--space-8) 0 var(--space-6);
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      animation: fadeIn 1s ease 1s both;
+      width: 100%;
+      z-index: 10;
+    }
+
+    .hero-footer a {
+      color: var(--color-accent-teal);
+      text-decoration: none;
+    }
+
+    .hero-footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .roles-grid {
+        grid-template-columns: 1fr;
+        max-width: 400px;
+      }
+
+      .stats-row {
+        flex-direction: column;
+        gap: var(--space-4);
+      }
+
+      .stats-divider {
+        width: 40px;
+        height: 1px;
+      }
+
+      .top-nav {
+        padding: 12px 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .role-card {
+        padding: var(--space-6);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="top-nav">
+    <div class="nav-logo">
+      <div class="nav-logo-icon">🎓</div>
+      <div class="nav-logo-text">
+        ClickTake Academy
+        <small>Management System</small>
+      </div>
+    </div>
+    <div class="nav-right">
+      <span class="nav-time" id="live-time"></span>
+      <a href="/login.html?role=admin" class="admin-login-btn">🔐 Admin Login</a>
+    </div>
+  </nav>
+
+  <!-- Floating Background Orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-grid"></div>
+
+    <!-- Badge -->
+    <div class="hero-badge">
+      ✨ Academy Management System v2.0
+    </div>
+
+    <!-- Title -->
+    <div class="hero-title">
+      <h1>Who are<br><span class="text-gradient">you today?</span></h1>
+    </div>
+
+    <p class="hero-sub">
+      Select your role to access the system. Credentials are provided by your Academy Administrator.
+    </p>
+
+    <!-- 3 Role Cards -->
+    <div class="roles-grid">
+
+      <!-- Student Card -->
+      <div class="role-card role-card-student card-hover" id="card-student" onclick="selectRole('student')" tabindex="0"
+        role="button" aria-label="Student login">
+        <div class="role-icon">🎓</div>
+        <div class="role-title">Student</div>
+        <div class="role-desc">Mark attendance, view your schedule, and track your academic journey.</div>
+        <div class="role-divider"></div>
+        <ul class="role-features">
+          <li>Mark daily attendance</li>
+          <li>View class schedule</li>
+          <li>Track attendance history</li>
+        </ul>
+        <button class="role-cta" onclick="selectRole('student')">Enter as Student →</button>
+      </div>
+
+      <!-- Teacher Card (center, slightly taller) -->
+      <div class="role-card role-card-teacher card-hover" id="card-teacher" onclick="selectRole('teacher')" tabindex="0"
+        role="button" aria-label="Teacher login" style="transform: scale(1.03);">
+        <div class="role-icon">👨‍🏫</div>
+        <div class="role-title">Teacher</div>
+        <div class="role-desc">Manage your classes, take attendance, and monitor student progress.</div>
+        <div class="role-divider"></div>
+        <ul class="role-features">
+          <li>Mark class attendance</li>
+          <li>View live student status</li>
+          <li>Apply for leave</li>
+        </ul>
+        <button class="role-cta" onclick="selectRole('teacher')">Enter as Teacher →</button>
+      </div>
+
+      <!-- Visitor Card -->
+      <div class="role-card role-card-visitor card-hover" id="card-visitor" onclick="selectRole('visitor')" tabindex="0"
+        role="button" aria-label="Visitor check-in">
+        <div class="role-icon">🚪</div>
+        <div class="role-title">Visitor</div>
+        <div class="role-desc">Check in as a visitor (parent, vendor, or guest). Quick and easy process.</div>
+        <div class="role-divider"></div>
+        <ul class="role-features">
+          <li>Check in at reception</li>
+          <li>Meet your host</li>
+          <li>Quick QR check-out</li>
+        </ul>
+        <button class="role-cta" onclick="selectRole('visitor')">Check In →</button>
+      </div>
+
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row" id="stats-row">
+      <div class="stat-item">
+        <div class="val" id="stat-total">—</div>
+        <div class="lbl">Total Members</div>
+      </div>
+      <div class="stats-divider"></div>
+      <div class="stat-item">
+        <div class="val" id="stat-today">—</div>
+        <div class="lbl">Present Today</div>
+      </div>
+      <div class="stats-divider"></div>
+      <div class="stat-item">
+        <div class="val" id="stat-visitors">—</div>
+        <div class="lbl">Active Visitors</div>
+      </div>
+      <div class="stats-divider"></div>
+      <div class="stat-item">
+        <div class="val">🟢</div>
+        <div class="lbl">System Online</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="hero-footer">
+      Built with ❤️ by <a href="https://clicktaketech.com/" target="_blank">ClickTake Technologies</a>
+      &nbsp;·&nbsp; Single-Academy Edition &nbsp;·&nbsp; v2.0
+    </div>
+  </section>
+
+  <div id="toast-container"></div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    // ── Already logged in? Redirect ──
+    const user = getUser();
+    const token = getToken();
+    if (token && user) {
+      window.location.href = `/${user.role}/dashboard.html`;
+    }
+
+    // ── Live Clock ──
+    function updateClock() {
+      document.getElementById('live-time').textContent = new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    updateClock(); setInterval(updateClock, 1000);
+
+    // ── Role Selection ──
+    function selectRole(role) {
+      if (role === 'visitor') {
+        window.location.href = '/visitor/checkin.html';
+      } else {
+        window.location.href = `/gallery.html?role=${role}`;
+      }
+    }
+
+    // Keyboard support for cards
+    document.querySelectorAll('.role-card').forEach(card => {
+      card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') card.click(); });
+    });
+
+    // ── Card hover ripple ──
+    document.querySelectorAll('.role-card').forEach(card => {
+      card.addEventListener('click', function (e) {
+        const ripple = document.createElement('div');
+        ripple.className = 'ripple';
+        const rect = card.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height) * 2;
+        ripple.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - rect.left - size / 2}px;top:${e.clientY - rect.top - size / 2}px`;
+        card.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 600);
+      });
+    });
+
+    // ── Animate stat counters ──
+    function animateCount(el, target) {
+      let current = 0;
+      const step = Math.ceil(target / 30);
+      const interval = setInterval(() => {
+        current = Math.min(current + step, target);
+        el.textContent = current;
+        if (current >= target) clearInterval(interval);
+      }, 40);
+    }
+
+    // ── No auth needed for public stats—skip for now, just show placeholders ──
+    document.getElementById('stat-total').textContent = '∞';
+    document.getElementById('stat-today').textContent = '—';
+    document.getElementById('stat-visitors').textContent = '—';
+  </script>
+</body>
+
+</html>

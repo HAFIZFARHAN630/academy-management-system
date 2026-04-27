@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <style>
+        .live-feed {
+            max-height: 340px;
+            overflow-y: auto;
+        }
+
+        .feed-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: 10px var(--space-5);
+            border-bottom: 1px solid var(--border-subtle);
+            animation: fadeInLeft 0.3s ease;
+        }
+
+        .feed-item:last-child {
+            border-bottom: none;
+        }
+
+        .feed-icon {
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .feed-info .feed-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .feed-info .feed-sub {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .feed-time {
+            margin-left: auto;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .mini-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            height: 60px;
+        }
+
+        .mini-bar {
+            flex: 1;
+            border-radius: 4px 4px 0 0;
+            background: linear-gradient(to top, var(--color-primary), var(--color-accent-teal));
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .mini-bar:hover {
+            opacity: 1;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-4);
+        }
+
+        .qa-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: var(--space-5);
+            border-radius: var(--radius-xl);
+            background: var(--bg-600);
+            border: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: var(--transition-normal);
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .qa-btn:hover {
+            border-color: var(--border-medium);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .qa-icon {
+            font-size: 2rem;
+        }
+
+        .qa-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        @media(max-width:768px) {
+            .quick-actions {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body class="gradient-mesh">
+    <div id="app"></div>
+
+    <div id="toast-container"></div>
+    <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        if (!requireAuth(['admin'])) { }
+
+        // Inject Layout
+        document.getElementById('app').innerHTML = `
+            <div class="admin-layout">
+                ${getSidebarHTML('dashboard')}
+                <main class="main-content">
+                    ${getTopbarHTML('Dashboard')}
+                    <div class="page-content">
+                        <!-- Stats Cards -->
+                        <div class="grid-4 stagger-children" style="margin-bottom:var(--space-8);" id="stats-grid">
+                            <div class="stat-card" style="--stat-color:#6C63FF">
+                                <div class="stat-icon">👨‍🏫</div>
+                                <div class="stat-value" id="s-teachers">—</div>
+                                <div class="stat-label">Total Teachers</div>
+                            </div>
+                            <div class="stat-card" style="--stat-color:#00D2D3">
+                                <div class="stat-icon">🎓</div>
+                                <div class="stat-value" id="s-students">—</div>
+                                <div class="stat-label">Total Students</div>
+                            </div>
+                            <div class="stat-card" style="--stat-color:#2ED573">
+                                <div class="stat-icon">✅</div>
+                                <div class="stat-value" id="s-present">—</div>
+                                <div class="stat-label">Present Today</div>
+                            </div>
+                            <div class="stat-card" style="--stat-color:#F7B731">
+                                <div class="stat-icon">🚪</div>
+                                <div class="stat-value" id="s-visitors">—</div>
+                                <div class="stat-label">Active Visitors</div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div style="margin-bottom:var(--space-8);">
+                            <h3 style="margin-bottom:var(--space-4);font-family:var(--font-display);">Quick Actions</h3>
+                            <div class="quick-actions">
+                                <a href="/admin/teachers.html?action=add" class="qa-btn">
+                                    <div class="qa-icon">➕</div>
+                                    <div class="qa-label">Add Teacher</div>
+                                </a>
+                                <a href="/admin/students.html?action=add" class="qa-btn">
+                                    <div class="qa-icon">🎓</div>
+                                    <div class="qa-label">Add Student</div>
+                                </a>
+                                <a href="/visitor/checkin.html" class="qa-btn" target="_blank">
+                                    <div class="qa-icon">🚪</div>
+                                    <div class="qa-label">Visitor Check-In</div>
+                                </a>
+                                <a href="/admin/attendance.html" class="qa-btn">
+                                    <div class="qa-icon">⏰</div>
+                                    <div class="qa-label">Live Attendance</div>
+                                </a>
+                                <a href="/admin/salary.html" class="qa-btn">
+                                    <div class="qa-icon">💰</div>
+                                    <div class="qa-label">Process Salary</div>
+                                </a>
+                                <a href="/admin/leave.html" class="qa-btn">
+                                    <div class="qa-icon">📅</div>
+                                    <div class="qa-label">Leave Requests</div>
+                                </a>
+                                <a href="/admin/workers.html?action=add" class="qa-btn">
+                                    <div class="qa-icon">👷</div>
+                                    <div class="qa-label">Add Worker</div>
+                                </a>
+                                <a href="/admin/settings.html" class="qa-btn">
+                                    <div class="qa-icon">⚙️</div>
+                                    <div class="qa-label">Settings</div>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Bottom grid: Live Feed + Visitors -->
+                        <div class="grid-2">
+                            <!-- Live Activity Feed -->
+                            <div class="table-container">
+                                <div class="table-header">
+                                    <h3>🟢 Live Activity</h3>
+                                    <div class="flex items-center gap-2">
+                                        <div class="pulse-dot green"></div><span class="text-sm text-muted">Real-time</span>
+                                    </div>
+                                </div>
+                                <div class="live-feed" id="live-feed">
+                                    <div style="padding:var(--space-6);text-align:center;color:var(--text-muted);">Loading...
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Active Visitors -->
+                            <div class="table-container">
+                                <div class="table-header">
+                                    <h3>🚪 Active Visitors</h3>
+                                    <a href="/admin/visitors.html" class="btn btn-sm btn-secondary">View All</a>
+                                </div>
+                                <div id="visitors-feed">
+                                    <div style="padding:var(--space-6);text-align:center;color:var(--text-muted);">Loading...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div style="margin-top:var(--space-8);text-align:center;">
+                            <small style="color:var(--text-muted);">Built by <a href="https://clicktaketech.com" target="_blank"
+                                    style="color:var(--color-accent-teal);">ClickTake Technologies</a> · Academy Management
+                                System v2.0</small>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        `;
+
+        initAdminLayout('/admin/dashboard.html');
+
+        async function loadStats() {
+            try {
+                const d = await API.get('/stats');
+                document.getElementById('s-teachers').textContent = d.total_teachers || 0;
+                document.getElementById('s-students').textContent = d.total_students || 0;
+                document.getElementById('s-present').textContent = d.present_today || 0;
+                document.getElementById('s-visitors').textContent = d.active_visitors || 0;
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadNotifications() {
+            try {
+                const notes = await API.get('/notifications');
+                const list = document.getElementById('notif-list');
+                if (!notes.length) { 
+                    list.innerHTML = '<div style="padding:var(--space-5);text-align:center;color:var(--text-muted);font-size:0.85rem;">No notifications</div>'; 
+                    return; 
+                }
+                list.innerHTML = notes.slice(0, 8).map(n => {
+                    const icon = n.type === 'visitor' ? '🚪' : n.type === 'leave' ? '📅' : n.type === 'salary' ? '💰' : '📢';
+                    const unreadClass = n.is_read ? '' : 'unread';
+                    return `
+                        <div class="notif-item ${unreadClass}" onclick="API.post('/notifications/read/${n.id}');this.classList.remove('unread')">
+                        <div class="notif-icon">${icon}</div>
+                        <div>
+                            <div class="notif-title">${n.title}</div>
+                            <div class="notif-msg">${n.message}</div>
+                            <div class="notif-time">${timeAgo(n.created_at)}</div>
+                        </div>
+                        </div>`;
+                }).join('');
+            } catch (e) { }
+        }
+
+        async function loadVisitors() {
+            try {
+                const visitors = await API.get('/visitors/active');
+                const el = document.getElementById('visitors-feed');
+                if (!visitors.length) { el.innerHTML = '<div style="padding:var(--space-6);text-align:center;color:var(--text-muted);">No active visitors</div>'; return; }
+                el.innerHTML = visitors.map(v => {
+                    const dur = Math.floor((Date.now() / 1000 - v.check_in) / 60);
+                    const cls = dur > 240 ? 'badge-red' : dur > 120 ? 'badge-amber' : 'badge-green';
+                    return `<div class="feed-item">
+                    <div class="feed-icon">🚶</div>
+                    <div class="feed-info">
+                        <div class="feed-name">${v.full_name}</div>
+                        <div class="feed-sub">${v.purpose} · Host: ${v.host_name || '—'}</div>
+                    </div>
+                    <div class="flex flex-col items-center gap-2">
+                        <span class="badge ${cls}">${dur}m</span>
+                        <button class="btn btn-sm btn-danger" onclick="checkOutVisitor(${v.id})" style="padding:3px 10px;font-size:0.72rem;">Check Out</button>
+                    </div>
+                    </div>`;
+                }).join('');
+            } catch (e) { }
+        }
+
+        async function checkOutVisitor(id) {
+            try { await API.post(`/visitors/checkout/${id}`); toast('Visitor checked out', 'success'); loadVisitors(); loadStats(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function loadLiveFeed() {
+            try {
+                const data = await API.get('/attendance/daily-report');
+                const el = document.getElementById('live-feed');
+                const recent = data.filter(r => r.punch_in).sort((a, b) => b.punch_in - a.punch_in).slice(0, 10);
+                if (!recent.length) { el.innerHTML = '<div style="padding:var(--space-6);text-align:center;color:var(--text-muted);">No punches today</div>'; return; }
+                el.innerHTML = recent.map(r => {
+                    const icons = { teacher: '👨‍🏫', student: '🎓', worker: '👷' };
+                    return `<div class="feed-item">
+                    <div class="feed-icon">${icons[r.role] || '👤'}</div>
+                    <div class="feed-info">
+                        <div class="feed-name">${r.full_name}</div>
+                        <div class="feed-sub">${r.role} · ${r.punch_out ? 'Checked out' : 'Checked in'}</div>
+                    </div>
+                    <div class="feed-time">${formatTime(r.punch_out || r.punch_in)}</div>
+                    </div>`;
+                }).join('');
+            } catch (e) { }
+        }
+
+        loadStats(); loadNotifications(); loadLiveFeed(); loadVisitors();
+        setInterval(() => { loadStats(); loadLiveFeed(); loadVisitors(); }, 30000);
+        setInterval(loadNotifications, 15000);
+    </script>
+</body>
+
+</html>

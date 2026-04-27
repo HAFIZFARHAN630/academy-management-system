@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(ellipse 70% 50% at 20% 20%, rgba(108, 99, 255, 0.18) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 80% 80%, rgba(0, 210, 211, 0.12) 0%, transparent 55%), var(--bg-900);
+        }
+
+        .login-wrap {
+            width: 100%;
+            max-width: 440px;
+            padding: var(--space-6);
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .login-card {
+            background: linear-gradient(135deg, var(--bg-600) 0%, var(--bg-500) 100%);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-2xl);
+            overflow: hidden;
+        }
+
+        .login-top {
+            padding: var(--space-8) var(--space-8) var(--space-6);
+            background: linear-gradient(135deg, var(--role-color, var(--color-primary)) 0%, transparent 80%);
+            background-color: var(--bg-700);
+            text-align: center;
+            position: relative;
+        }
+
+        .login-top::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(var(--role-rgb, 108, 99, 255), 0.15) 0%, transparent 60%);
+        }
+
+        .login-role-icon {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: var(--space-3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-title {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 800;
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 6px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-body {
+            padding: var(--space-8);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-5);
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            transition: var(--transition-fast);
+            margin-bottom: var(--space-2);
+        }
+
+        .back-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1rem;
+            border-radius: var(--radius-lg);
+            font-weight: 700;
+        }
+
+        .attempts-warning {
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-md);
+            background: rgba(255, 71, 87, 0.08);
+            border: 1px solid rgba(255, 71, 87, 0.2);
+            color: var(--color-accent-rose);
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        .lockout-timer {
+            font-weight: 700;
+        }
+
+        .login-footer {
+            padding: var(--space-4) var(--space-8);
+            border-top: 1px solid var(--border-subtle);
+            text-align: center;
+        }
+
+        .login-footer small {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            font-size: 1rem;
+            padding: 0;
+            line-height: 1;
+            transition: var(--transition-fast);
+        }
+
+        .password-toggle:hover {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="login-wrap">
+        <button class="back-btn" onclick="history.back()">← Back to Role Selection</button>
+
+        <div class="login-card" id="login-card">
+            <div class="login-top" id="login-top">
+                <span class="login-role-icon" id="role-icon">🔐</span>
+                <h1 class="login-title" id="login-title">Login</h1>
+                <p class="login-subtitle" id="login-subtitle">Select auth method</p>
+
+                <!-- Dual Options -->
+                <div
+                    style="display:flex; justify-content:center; gap:10px; margin-top:20px; position:relative; z-index:2;">
+                    <button id="btn-tab-face" onclick="switchLoginTab('face')"
+                        style="flex:1; padding:10px; border-radius:8px; border:none; background:var(--bg-800); color:var(--text-muted); font-weight:600; cursor:pointer;">👤
+                        Face Punch</button>
+                    <button id="btn-tab-manual" onclick="switchLoginTab('manual')"
+                        style="flex:1; padding:10px; border-radius:8px; border:none; background:var(--color-primary); color:white; font-weight:600; cursor:pointer;">🔑
+                        Manual</button>
+                </div>
+            </div>
+
+            <!-- Face Scanner Panel -->
+            <div id="face-panel" style="display:none; padding: 20px; text-align:center;">
+                <p class="text-secondary text-sm" style="margin-bottom:15px;">Look at the camera to authenticate</p>
+                <div style="width: 250px; height: 250px; margin: 0 auto; border-radius: 50%; overflow: hidden; border: 3px solid var(--color-primary); position: relative; background: #000;"
+                    id="camera-container">
+                    <video id="login-video" autoplay muted playsinline
+                        style="width: 100%; height: 100%; object-fit: cover;"></video>
+                </div>
+                <div id="face-status" style="margin-top: 15px; font-weight: bold; color: var(--color-primary);">Waiting
+                    for camera...</div>
+            </div>
+
+            <form class="login-body" id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label" for="login-id">Login ID <span class="req">*</span></label>
+                    <div class="form-control-icon">
+                        <span class="icon">👤</span>
+                        <input class="form-control" id="login-id" type="text" placeholder="e.g. TCH-001 or 0300-0000000"
+                            autocomplete="username" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password <span class="req">*</span></label>
+                    <div class="form-control-icon" style="position: relative;">
+                        <span class="icon">🔑</span>
+                        <input class="form-control" id="password" type="password" placeholder="Enter your password"
+                            autocomplete="current-password" required style="padding-right: 44px;">
+                        <button type="button" class="password-toggle" onclick="togglePwd()" id="pwd-toggle"
+                            title="Show/hide password">👁</button>
+                    </div>
+                </div>
+
+                <div class="attempts-warning" id="attempts-warning">
+                    <strong>⚠️</strong> <span id="warning-msg">Invalid credentials.</span>
+                </div>
+
+                <button type="submit" class="btn btn-primary login-btn" id="login-btn">
+                    <span id="btn-text">Sign In</span>
+                    <span id="btn-spinner" class="spinner"
+                        style="display:none; width:18px; height:18px; border-width:2px;"></span>
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <small>🔒 Credentials are provided by your Academy Administrator<br>Contact them if you need
+                    access.</small>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="/js/face-api.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script>
+        const params = new URLSearchParams(location.search);
+        const role = params.get('role') || 'teacher';
+        const galleryId = params.get('id');
+
+        // Session expired message
+        if (params.get('session') === 'expired') {
+            setTimeout(() => toast('Your session expired. Please login again.', 'warning'), 500);
+        }
+
+        if (galleryId) {
+            const loginInput = document.getElementById('login-id');
+            loginInput.value = galleryId;
+            loginInput.readOnly = true;
+            loginInput.style.background = 'var(--bg-800)';
+            loginInput.style.color = 'var(--text-muted)';
+            document.getElementById('password').focus();
+        }
+
+        // Customize card per role - Moved to top
+        const roleConfig = {
+            student: { icon: '🎓', title: 'Student Login', sub: 'Access your student portal', color: '#00D2D3' },
+            teacher: { icon: '👨‍🏫', title: 'Teacher Login', sub: 'Access your teacher dashboard', color: '#6C63FF' },
+            worker: { icon: '👷', title: 'Worker Login', sub: 'Access your work portal', color: '#2ED573' },
+            admin: { icon: '⚙️', title: 'Admin Login', sub: 'Full system access', color: '#FF4757' },
+            visitor: { icon: '🚪', title: 'Visitor Login', sub: 'Check in as a visitor', color: '#F7B731' },
+        };
+
+        const cfg = roleConfig[role] || roleConfig.teacher;
+        document.getElementById('role-icon').textContent = cfg.icon;
+        document.getElementById('login-title').textContent = cfg.title;
+        document.getElementById('login-subtitle').textContent = cfg.sub;
+        document.getElementById('login-top').style.setProperty('--role-color', cfg.color);
+        document.querySelector('.login-btn').style.background = cfg.color;
+        document.getElementById('login-card').style.borderColor = `${cfg.color}33`;
+
+        let faceModelsLoaded = false;
+        let matcher = null;
+        let loginStream = null;
+
+        async function switchLoginTab(tab) {
+            const manualBtn = document.getElementById('btn-tab-manual');
+            const faceBtn = document.getElementById('btn-tab-face');
+            const manualForm = document.getElementById('login-form');
+            const facePanel = document.getElementById('face-panel');
+            const roleIcon = document.getElementById('role-icon');
+
+            if (tab === 'face') {
+                faceBtn.style.background = 'var(--color-primary)'; faceBtn.style.color = 'white';
+                manualBtn.style.background = 'var(--bg-800)'; manualBtn.style.color = 'var(--text-muted)';
+                manualForm.style.display = 'none';
+                facePanel.style.display = 'block';
+                roleIcon.textContent = '👤';
+                startFaceScanning();
+            } else {
+                manualBtn.style.background = 'var(--color-primary)'; manualBtn.style.color = 'white';
+                faceBtn.style.background = 'var(--bg-800)'; faceBtn.style.color = 'var(--text-muted)';
+                facePanel.style.display = 'none';
+                manualForm.style.display = 'flex';
+                roleIcon.textContent = cfg.icon;
+                stopFaceScanning();
+            }
+        }
+
+        async function startFaceScanning() {
+            const status = document.getElementById('face-status');
+            
+            // 🔒 Security Check
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                status.textContent = 'HTTPS Required';
+                status.style.color = 'var(--color-accent-rose)';
+                toast('Face authentication requires a secure HTTPS connection.', 'error');
+                return;
+            }
+
+            try {
+                if (!faceModelsLoaded) {
+                    status.textContent = 'Loading Models...';
+                    await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+                    await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+                    await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+
+                    status.textContent = 'Loading User Profiles...';
+                    const users = await API.get('/auth/faces');
+                    const roleUsers = users.filter(u => u.role === role);
+
+                    const labeledDescriptors = roleUsers.map(u => {
+                        return new faceapi.LabeledFaceDescriptors(u.login_id, [new Float32Array(u.embedding)]);
+                    });
+
+                    if (labeledDescriptors.length === 0) {
+                        status.textContent = 'No enrolled faces for ' + role;
+                        return;
+                    }
+
+                    matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
+                    faceModelsLoaded = true;
+                }
+
+                status.textContent = 'Starting Camera...';
+                const video = document.getElementById('login-video');
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    } 
+                });
+                video.srcObject = stream;
+                loginStream = stream;
+
+                status.textContent = 'Look at the camera 📸';
+
+                let scanned = false;
+                const scanInt = setInterval(async () => {
+                    if (!loginStream || scanned) { clearInterval(scanInt); return; }
+
+                    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })).withFaceLandmarks().withFaceDescriptor();
+
+                    if (detection) {
+                        const bestMatch = matcher.findBestMatch(detection.descriptor);
+                        if (bestMatch.label !== 'unknown') {
+                            scanned = true;
+                            clearInterval(scanInt);
+                            status.textContent = `Matched: ${bestMatch.label}! Syncing...`;
+                            status.style.color = '#2ed573';
+
+                            try {
+                                const punchRes = await API.post('/auth/face-punch', {
+                                    login_id: bestMatch.label,
+                                    role: role,
+                                    lat: window.lat || null,
+                                    lng: window.lng || null
+                                });
+
+                                if (punchRes.action === 'already_complete') {
+                                    toast('Already synced today!', 'warning');
+                                } else {
+                                    toast(`Success! You have been punched ${punchRes.action === 'punch_in' ? 'IN' : 'OUT'}.`, 'success');
+                                }
+
+                                setTimeout(() => {
+                                    window.location.href = `/gallery.html`;
+                                }, 2500);
+
+                            } catch (e) {
+                                toast(e.message, 'error');
+                                scanned = false; // retry
+                                status.textContent = 'Look at the camera 📸';
+                                status.style.color = 'var(--color-primary)';
+                            }
+                        } else {
+                            status.textContent = 'Face not recognized.';
+                        }
+                    }
+                }, 150);
+
+            } catch (e) {
+                status.textContent = 'Camera error';
+                status.style.color = 'red';
+            }
+        }
+
+        function stopFaceScanning() {
+            if (loginStream) {
+                loginStream.getTracks().forEach(t => t.stop());
+                loginStream = null;
+            }
+            const video = document.getElementById('login-video');
+            if (video) {
+                video.srcObject = null;
+                video.pause();
+            }
+        }
+
+        function togglePwd() {
+            const inp = document.getElementById('password');
+            const btn = document.getElementById('pwd-toggle');
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+            btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+        }
+
+        if (params.get('face') === 'true') {
+            switchLoginTab('face');
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const login_id = document.getElementById('login-id').value.trim();
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('login-btn');
+            const btnText = document.getElementById('btn-text');
+            const spinner = document.getElementById('btn-spinner');
+            const warning = document.getElementById('attempts-warning');
+
+            btn.disabled = true; btnText.style.display = 'none'; spinner.style.display = 'block';
+            warning.style.display = 'none';
+
+            try {
+                const data = await API.post('/auth/login', { login_id, password });
+                // Save token and user
+                localStorage.setItem('ams_token', data.token);
+                localStorage.setItem('ams_user', JSON.stringify(data.user));
+
+                toast('Login successful! Redirecting...', 'success');
+
+                // If first login, force password change
+                if (data.user.temp_password) {
+                    setTimeout(() => window.location.href = '/change-password.html', 800);
+                } else {
+                    const redirectMap = {
+                        admin: '/admin/dashboard.html',
+                        teacher: '/teacher/dashboard.html',
+                        student: '/student/dashboard.html',
+                        worker: '/worker/dashboard.html',
+                    };
+                    setTimeout(() => window.location.href = redirectMap[data.user.role] || '/login.html', 800);
+                }
+            } catch (err) {
+                const msg = err.message || 'Login failed';
+                document.getElementById('warning-msg').textContent = msg;
+                warning.style.display = 'block';
+
+                // Shake animation
+                const card = document.querySelector('.login-card');
+                card.style.animation = 'none';
+                card.style.transform = 'translateX(-6px)';
+                setTimeout(() => { card.style.transform = 'translateX(6px)'; }, 80);
+                setTimeout(() => { card.style.transform = 'translateX(-4px)'; }, 160);
+                setTimeout(() => { card.style.transform = 'translateX(0)'; }, 240);
+            } finally {
+                btn.disabled = false; btnText.style.display = 'block'; spinner.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+
+</html>

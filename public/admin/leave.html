@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Management — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+</head>
+
+<body class="gradient-mesh">
+    <div class="admin-layout" id="app"></div>
+
+    <!-- Review Modal -->
+    <div class="modal-overlay" id="review-modal">
+        <div class="modal" style="max-width:480px;">
+            <div class="modal-header">
+                <h3>📋 Review Leave Request</h3><button class="btn-close"
+                    onclick="document.getElementById('review-modal').classList.remove('open')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="cred-slip" style="margin-bottom:var(--space-4);">
+                    <div class="cred-field"><span class="cred-key">Staff Member</span><span class="cred-val"
+                            id="r-name">—</span></div>
+                    <div class="cred-field"><span class="cred-key">Leave Type</span><span class="cred-val"
+                            id="r-type">—</span></div>
+                    <div class="cred-field"><span class="cred-key">Duration</span><span class="cred-val"
+                            id="r-dates">—</span></div>
+                    <div class="cred-field"><span class="cred-key">Reason</span><span class="cred-val" id="r-reason"
+                            style="font-size:0.85rem;font-family:inherit;">—</span></div>
+                </div>
+                <div class="form-group"><label class="form-label">Admin Comment (optional)</label><textarea
+                        class="form-control" id="r-comment" rows="2"
+                        placeholder="Add a note for the staff member..."></textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary"
+                    onclick="document.getElementById('review-modal').classList.remove('open')">Cancel</button>
+                <button class="btn btn-danger" onclick="submitReview('rejected')">❌ Reject</button>
+                <button class="btn btn-success" onclick="submitReview('approved')">✅ Approve</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        document.getElementById('app').innerHTML = `
+    ${getSidebarHTML('leave')}
+    <main class="main-content">
+      ${getTopbarHTML('Leave Management')}
+      <div class="page-content">
+        <div class="tabs" style="margin-bottom:var(--space-6);">
+          <button class="tab-btn active" onclick="switchTab('pending',this)">⏳ Pending Review</button>
+          <button class="tab-btn" onclick="switchTab('all',this)">📋 All Requests</button>
+        </div>
+        <div id="leave-table" class="table-container">
+          <div class="table-header"><h3 id="table-title">Pending Leave Requests</h3></div>
+          <table class="data-table">
+            <thead><tr><th>Staff</th><th>Leave Type</th><th>Duration</th><th>Days</th><th>Reason</th><th>Status</th><th>Applied On</th><th>Actions</th></tr></thead>
+            <tbody id="leave-tbody"><tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>`;
+
+        initAdminLayout('/admin/leave.html');
+        let currentFilter = 'pending', currentId = null;
+        let allLeaves = [];
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = tab;
+            document.getElementById('table-title').textContent = tab === 'pending' ? 'Pending Leave Requests' : 'All Leave Requests';
+            renderLeaves();
+        }
+
+        async function loadLeaves() {
+            try { allLeaves = await API.get('/leave/all'); renderLeaves(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        function renderLeaves() {
+            const data = currentFilter === 'pending' ? allLeaves.filter(l => l.status === 'pending') : allLeaves;
+            const tbody = document.getElementById('leave-tbody');
+            if (!data.length) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">${currentFilter === 'pending' ? '🎉 No pending requests!' : 'No leave requests found'}</td></tr>`; return; }
+            tbody.innerHTML = data.map(l => {
+                const start = new Date(l.start_date), end = new Date(l.end_date);
+                const days = Math.ceil((end - start) / 86400000) + 1;
+                const statusCls = { pending: 'badge-amber', approved: 'badge-green', rejected: 'badge-red' }[l.status];
+                const roleIcon = l.role === 'teacher' ? '👨‍🏫' : '👷';
+                return `<tr>
+        <td><div class="flex items-center gap-3"><div class="avatar" style="background:var(--color-primary);color:#fff;font-size:0.85rem;">${avatarLetter(l.full_name)}</div><div><div class="font-semibold">${l.full_name}</div><div class="text-xs text-muted">${roleIcon} ${l.login_id}</div></div></div></td>
+        <td><span class="badge badge-blue">${l.leave_type}</span></td>
+        <td class="text-sm">${l.start_date} → ${l.end_date}</td>
+        <td class="font-bold">${days}</td>
+        <td class="text-sm text-secondary" style="max-width:180px;">${l.reason || '—'}</td>
+        <td><span class="badge ${statusCls}">${l.status}</span></td>
+        <td class="text-sm text-muted">${timeAgo(l.created_at)}</td>
+        <td>${l.status === 'pending' ? `<button class="btn btn-sm btn-primary" onclick="openReview(${l.id},'${l.full_name}','${l.leave_type}','${l.start_date}','${l.end_date}','${(l.reason || '').replace(/'/g, '`')}')">Review</button>` : '<span class="text-muted">Done</span>'}</td>
+      </tr>`;
+            }).join('');
+        }
+
+        function openReview(id, name, type, start, end, reason) {
+            currentId = id;
+            document.getElementById('r-name').textContent = name;
+            document.getElementById('r-type').textContent = type;
+            document.getElementById('r-dates').textContent = `${start} → ${end}`;
+            document.getElementById('r-reason').textContent = reason || 'No reason provided';
+            document.getElementById('r-comment').value = '';
+            document.getElementById('review-modal').classList.add('open');
+        }
+
+        async function submitReview(status) {
+            const comment = document.getElementById('r-comment').value;
+            try {
+                await API.post(`/leave/review/${currentId}`, { status, admin_comment: comment });
+                toast(`Request ${status}`, status === 'approved' ? 'success' : 'warning');
+                document.getElementById('review-modal').classList.remove('open');
+                loadLeaves();
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        loadLeaves();
+    </script>
+</body>
+
+</html>

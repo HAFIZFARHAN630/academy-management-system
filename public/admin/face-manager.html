@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Face Manager — ClickTake Academy</title>
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/animations.css">
+  <style>
+    .user-card {
+      background: var(--bg-700);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      transition: all 0.2s;
+    }
+
+    .user-card:hover {
+      border-color: var(--color-primary);
+      transform: scale(1.01);
+    }
+
+    .user-avatar-small {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: var(--bg-600);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      overflow: hidden;
+    }
+
+    .user-avatar-small img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .grid-users {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 15px;
+    }
+  </style>
+</head>
+
+<body class="gradient-mesh">
+  <div class="admin-layout" id="app"></div>
+  <div id="toast-container"></div>
+  
+  <script src="/js/face-api.min.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/admin.js"></script>
+  <script src="/js/face-auth.js"></script>
+  
+  <script>
+    document.getElementById('app').innerHTML = `
+    ${getSidebarHTML('settings')}
+    <main class="main-content">
+      ${getTopbarHTML('Face Verification Manager')}
+      <div class="page-content">
+        <div class="flex items-center justify-between" style="margin-bottom:var(--space-6);">
+          <div class="flex items-center gap-3">
+             <a href="/admin/settings.html" class="btn btn-secondary btn-sm">← Back</a>
+             <h2 class="text-xl font-bold">🛡️ Biometric Enrollment Center</h2>
+          </div>
+          <div class="flex gap-2">
+            <div class="search-box" style="width:250px;">
+                <input type="text" class="form-control" id="search-user" placeholder="Search by name or ID..." oninput="loadUsers()">
+            </div>
+            <select class="form-control" id="filter-role" style="width:150px;" onchange="loadUsers()">
+              <option value="all">All Roles</option>
+              <option value="teacher">Teachers</option>
+              <option value="student">Students</option>
+              <option value="worker">Workers</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0; overflow:hidden; margin-bottom:var(--space-6);">
+            <div class="flex border-b border-700">
+                <button class="tab-btn active" data-tab="all" onclick="setTab('all')">All Users <span class="badge" id="count-all">0</span></button>
+                <button class="tab-btn" data-tab="pending" onclick="setTab('pending')">⏳ Pending <span class="badge" id="count-pending">0</span></button>
+                <button class="tab-btn" data-tab="verified" onclick="setTab('verified')">✅ Verified <span class="badge" id="count-verified">0</span></button>
+            </div>
+            <div id="user-list" class="grid-users" style="padding:var(--space-5);">
+                <div style="grid-column: 1 / -1; text-align:center; padding: 50px;">
+                    <span class="spinner"></span><br><br>Synchronizing biometrics...
+                </div>
+            </div>
+        </div>
+      </div>
+    </main>`;
+
+    let currentTab = 'all';
+
+    function setTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        loadUsers();
+    }
+
+    initAdminLayout('/admin/settings.html');
+
+    async function loadUsers() {
+      const list = document.getElementById('user-list');
+      const roleFilter = document.getElementById('filter-role').value;
+      const search = document.getElementById('search-user').value.toLowerCase();
+
+      try {
+        const [teachers, students, workers] = await Promise.all([
+          API.get('/users/teachers').catch(e => { console.error('Teachers failed:', e); return []; }),
+          API.get('/users/students').catch(e => { console.error('Students failed:', e); return []; }),
+          API.get('/users/workers').catch(e => { console.error('Workers failed:', e); return []; })
+        ]);
+
+        teachers.forEach(u => u.role = 'teacher');
+        students.forEach(u => u.role = 'student');
+        workers.forEach(u => u.role = 'worker');
+        
+        let all = [...teachers, ...students, ...workers];
+
+        // Apply Tab Filter
+        if (currentTab === 'pending') all = all.filter(u => !u.is_face_enrolled);
+        if (currentTab === 'verified') all = all.filter(u => u.is_face_enrolled);
+
+        // Apply Search & Role Filter
+        if (roleFilter !== 'all') all = all.filter(u => u.role === roleFilter);
+        if (search) {
+            all = all.filter(u => u.full_name.toLowerCase().includes(search) || (u.login_id || '').toLowerCase().includes(search));
+        }
+
+        // Update Counts
+        const teachersRaw = [...teachers, ...students, ...workers];
+        document.getElementById('count-all').textContent = teachersRaw.length;
+        document.getElementById('count-pending').textContent = teachersRaw.filter(u => !u.is_face_enrolled).length;
+        document.getElementById('count-verified').textContent = teachersRaw.filter(u => u.is_face_enrolled).length;
+
+        if (all.length === 0) {
+          list.innerHTML = `<div style="grid-column: 1 / -1; text-align:center; padding: 50px; color:var(--text-muted);">No users found in this category.</div>`;
+          return;
+        }
+
+        list.innerHTML = all.map(u => `
+          <div class="user-card stagger-in">
+            <div class="user-avatar-small">
+              ${u.photo ? `<img src="${u.photo}">` : avatarLetter(u.full_name)}
+            </div>
+            <div style="flex:1">
+              <div class="font-bold text-sm">${u.full_name}</div>
+              <div class="text-xs text-muted">${u.login_id} • ${u.role.toUpperCase()}</div>
+            </div>
+            <div class="flex items-center gap-2">
+              ${u.is_face_enrolled 
+                ? `<span class="badge badge-green text-xs">✅ Verified</span>
+                   <button class="btn btn-icon btn-sm action-reset-face" data-id="${u.id}" data-name="${u.full_name.replace(/"/g, '&quot;')}" title="Reset Biometrics">🔄</button>` 
+                : `<button class="btn btn-primary btn-sm action-enroll" data-id="${u.id}" data-name="${u.full_name.replace(/"/g, '&quot;')}">📸 Verify Now</button>`
+              }
+            </div>
+          </div>
+        `).join('');
+
+      } catch (e) {
+        toast(e.message, 'error');
+        list.innerHTML = `<div style="grid-column: 1 / -1; color:var(--color-accent-rose); text-align:center;">Failed to load user directory.</div>`;
+      }
+    }
+
+    async function enrollUser(id, name, event) {
+      executeEnrollment(id, () => {
+         toast(`Biometrics enrolled for ${name}`, 'success');
+         loadUsers();
+      });
+    }
+
+    async function resetFace(id, name, event) {
+      if (event) { event.preventDefault(); event.stopPropagation(); }
+      if (!await confirmAction('Reset Biometrics', `Revoke biometric access for ${name}?`)) return;
+      try {
+        await API.post(`/users/reset-face/${id}`);
+        toast(`Face data removed for ${name}`, 'success');
+        loadUsers();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    // Event Delegation for Face Actions
+    document.getElementById('user-list').addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const name = btn.dataset.name;
+      if (btn.classList.contains('action-enroll')) enrollUser(id, name, e);
+      else if (btn.classList.contains('action-reset-face')) resetFace(id, name, e);
+    });
+
+    loadUsers();
+  </script>
+  <style>
+      .tab-btn {
+          padding: 15px 25px;
+          border: none;
+          background: none;
+          color: var(--text-secondary);
+          font-weight: 600;
+          cursor: pointer;
+          border-bottom: 2px solid transparent;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.2s;
+      }
+      .tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.02); }
+      .tab-btn.active {
+          color: var(--color-primary);
+          border-bottom-color: var(--color-primary);
+          background: rgba(108, 99, 255, 0.05);
+      }
+      .tab-btn .badge {
+          background: var(--bg-800);
+          color: var(--text-muted);
+          font-size: 0.7rem;
+      }
+      .tab-btn.active .badge {
+          background: var(--color-primary);
+          color: white;
+      }
+  </style>
+</body>
+</html>

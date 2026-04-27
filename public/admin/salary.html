@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salary — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+</head>
+
+<body class="gradient-mesh">
+    <div class="admin-layout" id="app"></div>
+    <div id="toast-container"></div>
+    <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        document.getElementById('app').innerHTML = `
+    ${getSidebarHTML('salary')}
+    <main class="main-content">
+      ${getTopbarHTML('Salary Management')}
+      <div class="page-content">
+        <div class="flex items-center justify-between" style="margin-bottom:var(--space-6);">
+          <div class="flex items-center gap-3">
+            <input class="form-control" type="month" id="month-selector" style="width:180px;padding:8px 12px;" onchange="loadSalary()">
+          </div>
+          <div class="flex gap-3">
+            <button class="btn btn-secondary" onclick="calculateSalary()">🔄 Auto-Calculate</button>
+            <button class="btn btn-primary" onclick="markAllPaid()">💰 Mark All Paid</button>
+          </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="grid-4 stagger-children" style="margin-bottom:var(--space-6);" id="salary-stats">
+          <div class="stat-card" style="--stat-color:#6C63FF"><div class="stat-icon">👥</div><div class="stat-value" id="s-total">—</div><div class="stat-label">Total Staff</div></div>
+          <div class="stat-card" style="--stat-color:#2ED573"><div class="stat-icon">✅</div><div class="stat-value" id="s-paid">—</div><div class="stat-label">Paid</div></div>
+          <div class="stat-card" style="--stat-color:#F7B731"><div class="stat-icon">⏳</div><div class="stat-value" id="s-pending">—</div><div class="stat-label">Pending</div></div>
+          <div class="stat-card" style="--stat-color:#00D2D3"><div class="stat-icon">💵</div><div class="stat-value" id="s-amount">—</div><div class="stat-label" id="s-amount-label">Total Payable</div></div>
+        </div>
+
+        <!-- Salary Table -->
+        <div class="table-container">
+          <div class="table-header"><h3>💰 Salary Breakdown</h3></div>
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead><tr><th>Staff Member</th><th>Role</th><th>Base Salary</th><th>Days Present</th><th>Deductions</th><th>Net Salary</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="salary-tbody"><tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">Select month and click Auto-Calculate</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>`;
+
+        initAdminLayout('/admin/salary.html');
+
+        const now = new Date();
+        document.getElementById('month-selector').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+        async function loadSalary() {
+            const month = document.getElementById('month-selector').value;
+            try {
+                const data = await API.get(`/salary/summary?month=${month}`);
+                const tbody = document.getElementById('salary-tbody');
+                if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">No records. Click Auto-Calculate to generate.</td></tr>'; return; }
+                let totalPayable = 0, paid = 0, pending = 0;
+                tbody.innerHTML = data.map(s => {
+                    const net = s.net_salary || 0;
+                    totalPayable += net;
+                    if (s.status === 'paid') paid++; else pending++;
+                    const deductions = (s.late_deduction || 0) + (s.leave_deduction || 0) + (s.advance_deduction || 0);
+                    const roleIcon = s.role === 'teacher' ? '👨‍🏫' : '👷';
+                    const statusCls = s.status === 'paid' ? 'badge-green' : s.status === 'processed' ? 'badge-blue' : 'badge-amber';
+                    return `<tr>
+          <td><div class="flex items-center gap-3"><div class="avatar" style="background:${s.role === 'teacher' ? 'var(--color-primary)' : 'var(--color-worker)'};color:${s.role === 'teacher' ? '#fff' : '#111'};font-size:0.85rem;">${avatarLetter(s.full_name)}</div><div><div class="font-semibold">${s.full_name}</div><div class="text-xs text-muted">${s.login_id}</div></div></div></td>
+          <td>${roleIcon} ${s.role}</td>
+          <td>${formatCurrency(s.base_salary)}</td>
+          <td>${s.salary_id ? `${s.days_present || 0} / 26` : '—'}</td>
+          <td class="text-sm" style="color:var(--color-accent-rose);">${deductions > 0 ? `−${formatCurrency(deductions)}` : '—'}</td>
+          <td><span style="font-family:var(--font-display);font-weight:700;color:var(--color-accent-green);">${formatCurrency(net)}</span></td>
+          <td><span class="badge ${statusCls}">${s.status || 'pending'}</span></td>
+          <td>${s.salary_id && s.status !== 'paid' ? `<button class="btn btn-sm btn-success" onclick="markPaid(${s.salary_id},'${s.full_name}')">Mark Paid</button>` : s.status === 'paid' ? '✅' : '—'}</td>
+        </tr>`;
+                }).join('');
+                document.getElementById('s-total').textContent = data.length;
+                document.getElementById('s-paid').textContent = paid;
+                document.getElementById('s-pending').textContent = pending;
+                document.getElementById('s-amount').textContent = formatCurrency(totalPayable);
+                document.getElementById('s-amount-label').textContent = `Total Payable (${APP_CONFIG.currency})`;
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function calculateSalary() {
+            const month = document.getElementById('month-selector').value;
+            const btn = event.target; btn.disabled = true; btn.textContent = 'Calculating...';
+            try { const r = await API.post('/salary/calculate', { month }); toast(`Calculated for ${r.staff_processed} staff members`, 'success'); loadSalary(); } catch (e) { toast(e.message, 'error'); }
+            finally { btn.disabled = false; btn.textContent = '🔄 Auto-Calculate'; }
+        }
+
+        async function markPaid(id, name) {
+            try { await API.post(`/salary/mark-paid/${id}`); toast(`${name} marked as paid`, 'success'); loadSalary(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function markAllPaid() {
+            if (!await confirmAction('Bulk Payment', 'Mark ALL pending staff as paid? This action cannot be undone.')) return;
+            const tbody = document.getElementById('salary-tbody');
+            const btns = tbody.querySelectorAll('button');
+            let count = 0;
+            for (const btn of btns) { 
+                const id = btn.onclick?.toString().match(/markPaid\((\d+)/)?.[1]; 
+                if (id) { 
+                    try { 
+                        await API.post(`/salary/mark-paid/${id}`); 
+                        count++;
+                    } catch (e) { console.error(`Failed to pay ID ${id}:`, e); } 
+                } 
+            }
+            toast(`${count} staff members marked as paid`, 'success'); loadSalary();
+        }
+
+        loadSalary();
+    </script>
+</body>
+
+</html>

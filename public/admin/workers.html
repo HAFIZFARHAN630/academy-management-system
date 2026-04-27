@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workers — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+</head>
+
+<body class="gradient-mesh">
+    <div class="admin-layout" id="app"></div>
+
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Add Worker</h3><button class="btn-close" onclick="closeModal()">✕</button>
+            </div>
+            <form id="worker-form" onsubmit="saveWorker(event)">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group"><label class="form-label">Full Name <span
+                                    class="req">*</span></label><input class="form-control" id="f-name" required></div>
+                        <div class="form-group"><label class="form-label">Phone <span class="req">*</span> <small class="text-muted" id="phone-prefix-hint"></small></label><input
+                                class="form-control" id="f-phone" required></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label class="form-label">CNIC</label><input class="form-control"
+                                id="f-cnic"></div>
+                        <div class="form-group"><label class="form-label">Designation</label>
+                            <select class="form-control" id="f-designation">
+                                <option>Security Guard</option>
+                                <option>Cleaner</option>
+                                <option>Maintenance</option>
+                                <option>Driver</option>
+                                <option>Peon</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label class="form-label">Shift Start</label><input class="form-control"
+                                id="f-shift-start" type="time"></div>
+                        <div class="form-group"><label class="form-label">Shift End</label><input class="form-control"
+                                id="f-shift-end" type="time"></div>
+                    </div>
+                    <div class="form-group"><label class="form-label">Hourly Rate</label><input
+                            class="form-control" id="f-hourly" type="number" placeholder="e.g. 150"></div>
+                    <div class="form-group" id="f-status-grp" style="display:none;"><label
+                            class="form-label">Status</label><select class="form-control" id="f-status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="save-btn">Add Worker</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="modal-overlay" id="cred-modal">
+        <div class="modal" style="max-width:400px;">
+            <div class="modal-header">
+                <h3>🎉 Worker Added</h3><button class="btn-close"
+                    onclick="document.getElementById('cred-modal').classList.remove('open')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="cred-slip">
+                    <div class="cred-field"><span class="cred-key">Login ID</span><span class="cred-val"
+                            id="c-login-id">—</span></div>
+                    <div class="cred-field"><span class="cred-key">Temp Password</span><span class="cred-val"
+                            id="c-temp-pwd">—</span></div>
+                    <div class="cred-field"><span class="cred-key">Name</span><span class="cred-val"
+                            id="c-name">—</span></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="copyCreds()">📋 Copy</button>
+                <button class="btn btn-primary"
+                    onclick="document.getElementById('cred-modal').classList.remove('open')">Done</button>
+            </div>
+        </div>
+    </div>
+    <div id="toast-container"></div>
+    <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
+    <script src="/js/face-api.min.js"></script>
+    <script src="/js/face-auth.js"></script>
+    <script>
+        document.getElementById('app').innerHTML = `
+    ${getSidebarHTML('workers')}
+    <main class="main-content">
+      ${getTopbarHTML('Workers')}
+      <div class="page-content">
+        <div class="table-container">
+          <div class="table-header">
+            <h3>👷 All Workers</h3>
+            <div class="flex gap-3">
+              <div class="search-bar"><span>🔍</span><input type="text" id="search-input" placeholder="Search workers..." oninput="filterTable()"></div>
+              <button class="btn btn-primary" onclick="openAddModal()">➕ Add Worker</button>
+            </div>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>Worker</th><th>Designation</th><th>Phone</th><th>Shift</th><th>Face ID</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="workers-tbody"><tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>`;
+
+        initAdminLayout('/admin/workers.html');
+        let all = [], editId = null;
+
+        async function loadWorkers() {
+            try { all = await API.get('/users/workers'); render(all); } catch (e) { toast(e.message, 'error'); }
+        }
+        function render(workers) {
+            const tbody = document.getElementById('workers-tbody');
+            if (!workers.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">No workers found</td></tr>'; return; }
+            tbody.innerHTML = workers.map(w => `<tr>
+      <td><div class="flex items-center gap-3">
+        <div class="avatar" style="background:var(--color-worker);color:#111;">${avatarLetter(w.full_name)}</div>
+        <div><div class="font-semibold">${w.full_name}</div><div class="text-xs text-muted">${w.login_id}</div></div>
+      </div></td>
+      <td><span class="badge badge-purple">${w.designation || '—'}</span></td>
+      <td class="text-sm">${w.phone}</td>
+      <td class="text-sm text-muted">${w.shift_start || '—'} – ${w.shift_end || '—'}</td>
+      <td><span class="badge ${w.is_face_enrolled ? 'badge-green' : 'badge-amber'}" title="Face ID Status">${w.is_face_enrolled ? '🟢 Ready' : '🟡 Pending'}</span></td>
+      <td><span class="badge ${w.status === 'active' ? 'badge-green' : 'badge-red'}">${w.status}</span></td>
+      <td><div class="flex gap-2">
+        <button class="btn btn-sm btn-secondary btn-icon action-edit" data-id="${w.id}" title="Edit">✏️</button>
+        <button class="btn btn-sm btn-secondary btn-icon action-reset-pwd" data-id="${w.id}" data-name="${w.full_name.replace(/"/g, '&quot;')}" title="Reset Password">🔑</button>
+        <button class="btn btn-sm btn-secondary btn-icon action-reset-face" data-id="${w.id}" data-name="${w.full_name.replace(/"/g, '&quot;')}" data-enrolled="${w.is_face_enrolled}" title="${w.is_face_enrolled ? 'Re-enroll Face' : 'Enroll Face'}">📸</button>
+        <button class="btn btn-sm btn-danger btn-icon action-deactivate" data-id="${w.id}" data-name="${w.full_name.replace(/"/g, '&quot;')}" title="Deactivate">🗑️</button>
+      </div></td>
+    </tr>`).join('');
+        }
+        function filterTable() { const q = document.getElementById('search-input').value.toLowerCase(); render(all.filter(w => w.full_name.toLowerCase().includes(q) || (w.designation || '').toLowerCase().includes(q))); }
+        function openAddModal() { editId = null; document.getElementById('worker-form').reset(); document.getElementById('modal-title').textContent = 'Add New Worker'; document.getElementById('save-btn').textContent = 'Add Worker'; document.getElementById('f-status-grp').style.display = 'none'; document.getElementById('modal-overlay').classList.add('open'); }
+        function openEditModal(id) {
+            const w = all.find(x => x.id === id); if (!w) return; editId = id;
+            document.getElementById('modal-title').textContent = 'Edit Worker'; document.getElementById('save-btn').textContent = 'Save Changes';
+            document.getElementById('f-name').value = w.full_name; document.getElementById('f-phone').value = w.phone || ''; document.getElementById('f-cnic').value = w.cnic || '';
+            document.getElementById('f-designation').value = w.designation || 'Security Guard'; document.getElementById('f-shift-start').value = w.shift_start || ''; document.getElementById('f-shift-end').value = w.shift_end || ''; document.getElementById('f-hourly').value = w.hourly_rate || ''; document.getElementById('f-status').value = w.status || 'active'; document.getElementById('f-status-grp').style.display = 'block';
+            document.getElementById('modal-overlay').classList.add('open');
+        }
+        function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+        async function saveWorker(e) {
+            e.preventDefault(); const btn = document.getElementById('save-btn'); btn.disabled = true; btn.textContent = 'Saving...';
+            const p = { full_name: document.getElementById('f-name').value, phone: document.getElementById('f-phone').value, cnic: document.getElementById('f-cnic').value, designation: document.getElementById('f-designation').value, shift_start: document.getElementById('f-shift-start').value, shift_end: document.getElementById('f-shift-end').value, hourly_rate: parseFloat(document.getElementById('f-hourly').value) || null, status: document.getElementById('f-status').value };
+            try {
+                if (editId) { await API.put(`/users/workers/${editId}`, p); toast('Worker updated', 'success'); closeModal(); loadWorkers(); }
+                else { const r = await API.post('/users/workers', p); closeModal(); document.getElementById('c-login-id').textContent = r.login_id; document.getElementById('c-temp-pwd').textContent = r.temp_password; document.getElementById('c-name').textContent = r.full_name; document.getElementById('cred-modal').classList.add('open'); loadWorkers(); }
+            } catch (err) { toast(err.message, 'error'); }
+            finally { btn.disabled = false; btn.textContent = editId ? 'Save Changes' : 'Add Worker'; }
+        }
+        async function deactivate(id, name, event) { 
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            if (!await confirmAction('Deactivate Worker', `Remove ${name} from active staff?`)) return; 
+            try { await API.delete(`/users/${id}`); toast(`${name} deactivated`, 'info'); loadWorkers(); } catch (e) { toast(e.message, 'error'); } 
+        }
+
+        async function resetPwd(id, name, event) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            if (!await confirmAction('Reset Password', `⚠️ WARNING: This will immediately invalidate the current password for ${name}. A new temporary password will be generated. Continue?`)) return;
+            
+            const btn = event.target.closest('button');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '⌛';
+
+            try {
+                const r = await API.post(`/users/${id}/reset-password`);
+                document.getElementById('c-login-id').textContent = r.login_id;
+                document.getElementById('c-temp-pwd').textContent = r.temp_password;
+                document.getElementById('c-name').textContent = name;
+                document.getElementById('cred-modal').classList.add('open');
+                toast('✅ Password reset successfully', 'success');
+            } catch (e) { toast(e.message, 'error'); }
+            finally { btn.disabled = false; btn.innerHTML = originalHtml; }
+        }
+
+        function copyCreds() {
+            const id = document.getElementById('c-login-id').textContent;
+            const pwd = document.getElementById('c-temp-pwd').textContent;
+            const text = `ClickTake Academy Credentials\nLogin ID: ${id}\nTemp Password: ${pwd}\nURL: ${window.location.origin}/login.html`;
+            navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard!', 'success'));
+        }
+
+        async function resetFace(id, name, isEnrolled, event) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            
+            if (isEnrolled == '1') {
+                if (!await confirmAction('Reset & Re-enroll', `Delete current face data and enroll a new face for ${name} now?`)) return;
+                try {
+                    await API.post(`/users/reset-face/${id}`);
+                    toast('Face data deleted. Starting camera...', 'info');
+                } catch (e) { return toast(e.message, 'error'); }
+            } else {
+                if (!await confirmAction('Enroll Face', `Start camera to enroll face for ${name}?`)) return;
+            }
+
+            if (typeof executeEnrollment === 'function') {
+                executeEnrollment(id, () => { 
+                    toast(`Face enrolled successfully for ${name}`, 'success');
+                    loadWorkers(); 
+                });
+            } else {
+                toast('Face authentication module not loaded.', 'error');
+            }
+        }
+
+        // Event Delegation for Table Actions
+        document.getElementById('workers-tbody').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            const name = btn.dataset.name;
+            const enrolled = btn.dataset.enrolled;
+            if (btn.classList.contains('action-edit')) openEditModal(parseInt(id));
+            else if (btn.classList.contains('action-reset-pwd')) resetPwd(id, name, e);
+            else if (btn.classList.contains('action-reset-face')) resetFace(id, name, enrolled, e);
+            else if (btn.classList.contains('action-deactivate')) deactivate(id, name, e);
+        });
+
+        if (new URLSearchParams(location.search).get('action') === 'add') setTimeout(openAddModal, 500);
+        loadWorkers();
+    </script>
+</body>
+
+</html>

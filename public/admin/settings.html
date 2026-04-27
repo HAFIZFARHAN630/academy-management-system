@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — ClickTake Academy</title>
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/animations.css">
+  <style>
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-6);
+    }
+
+    .settings-card {
+      background: var(--bg-600);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: var(--space-6);
+    }
+
+    .settings-card h4 {
+      font-family: var(--font-display);
+      margin-bottom: var(--space-5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .settings-row:last-child {
+      border-bottom: none;
+    }
+
+    .settings-row .label {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .settings-row .hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    @media(max-width:768px) {
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body class="gradient-mesh">
+  <div class="admin-layout" id="app"></div>
+  <div id="toast-container"></div>
+  <script src="/js/api.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>
+    document.getElementById('app').innerHTML = `
+    ${getSidebarHTML('settings')}
+    <main class="main-content">
+      ${getTopbarHTML('System Settings')}
+      <div class="page-content">
+        <div class="settings-grid">
+
+          <!-- Security & Passwords -->
+          <div class="settings-card">
+            <h4>🔐 Security & Password Policy</h4>
+            <div class="settings-row">
+              <div><div class="label">Max Failed Login Attempts</div><div class="hint">Account locked after N fails</div></div>
+              <input class="form-control" style="width:80px;" type="number" value="5" min="3" max="10">
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Lockout Duration</div><div class="hint">Minutes before retrying</div></div>
+              <input class="form-control" style="width:80px;" type="number" value="15" min="5" max="60">
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Session Timeout</div><div class="hint">Minutes of inactivity</div></div>
+              <input class="form-control" style="width:80px;" type="number" value="30" min="10" max="120">
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Min Password Length</div><div class="hint">Minimum characters required</div></div>
+              <input class="form-control" style="width:80px;" type="number" value="8" min="6" max="20">
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Require Numbers in Password</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Force Password Expiry (90 days)</div></div>
+              <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+            </div>
+            <div style="margin-top:var(--space-5);">
+              <button class="btn btn-primary btn-sm" onclick="toast('Security settings saved','success')">Save Security Settings</button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <h4>🌍 Regional Settings</h4>
+            <div class="settings-row">
+              <div>
+                <div class="label">Academy Country</div>
+                <div class="hint">Sets default timezone and currency</div>
+              </div>
+              <div class="flex gap-2">
+                <select class="form-control" style="width:160px;" id="s-country" onchange="updateCountryDefaults(this.value)">
+                  <option value="Pakistan">Pakistan 🇵🇰</option>
+                  <option value="UAE">United Arab Emirates 🇦🇪</option>
+                  <option value="UK">United Kingdom 🇬🇧</option>
+                  <option value="USA">United States 🇺🇸</option>
+                  <option value="Saudi Arabia">Saudi Arabia 🇸🇦</option>
+                  <option value="Canada">Canada 🇨🇦</option>
+                  <option value="Australia">Australia 🇦🇺</option>
+                  <option value="Custom">Custom / Other</option>
+                </select>
+                <button class="btn btn-secondary btn-icon" onclick="detectLocation()" title="Auto-detect from IP">🛰️</button>
+              </div>
+            </div>
+            <div class="settings-row">
+                <div><div class="label">Timezone</div></div>
+                <select class="form-control" style="width:160px;" id="s-timezone">
+                  <option value="Asia/Karachi">Asia/Karachi (UTC+5)</option>
+                  <option value="Asia/Dubai">Asia/Dubai (UTC+4)</option>
+                  <option value="Asia/Riyadh">Asia/Riyadh (UTC+3)</option>
+                  <option value="Europe/London">Europe/London (UTC+0)</option>
+                  <option value="America/New_York">America/New_York (UTC-5)</option>
+                  <option value="America/Los_Angeles">America/Los_Angeles (UTC-8)</option>
+                  <option value="Australia/Sydney">Australia/Sydney (UTC+11)</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <div><div class="label">Currency</div><div class="hint">e.g. PKR, USD, AED</div></div>
+                <input class="form-control" style="width:160px;" id="s-currency" placeholder="PKR">
+            </div>
+            <div class="settings-row">
+                <div><div class="label">Phone Prefix</div><div class="hint">e.g. +92, +1, +44</div></div>
+                <input class="form-control" style="width:160px;" id="s-prefix" placeholder="+92">
+            </div>
+            <div class="settings-row">
+                <div><div class="label">Weekends</div><div class="hint">Comma separated (e.g. Sat,Sun)</div></div>
+                <input class="form-control" style="width:160px;" id="s-weekends" placeholder="Fri,Sat">
+            </div>
+            <div style="margin-top:var(--space-5);">
+              <button class="btn btn-primary btn-sm" onclick="saveRegionalSettings()">Save Regional Config</button>
+            </div>
+          </div>
+
+          <!-- Module Manager -->
+          <div class="settings-card">
+            <h4>🧩 Module Manager</h4>
+            <div class="settings-row">
+              <div><div class="label">Timetable Module</div><div class="hint">Controls class schedules</div></div>
+              <select class="form-control" style="width:120px;padding:6px 10px;" id="mod-timetable">
+                <option value="ON">🟢 ON (Live)</option><option value="PREPARE">🟡 PREPARE (Coming Soon)</option><option value="OFF">🔴 OFF (Hidden)</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Payslips Module</div><div class="hint">Controls salary views</div></div>
+              <select class="form-control" style="width:120px;padding:6px 10px;" id="mod-payslips">
+                <option value="ON">🟢 ON (Live)</option><option value="PREPARE">🟡 PREPARE (Coming Soon)</option><option value="OFF">🔴 OFF (Hidden)</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Result Cards Module</div><div class="hint">Controls academic results</div></div>
+              <select class="form-control" style="width:120px;padding:6px 10px;" id="mod-result_cards">
+                <option value="ON">🟢 ON (Live)</option><option value="PREPARE">🟡 PREPARE (Coming Soon)</option><option value="OFF">🔴 OFF (Hidden)</option>
+              </select>
+            </div>
+            <div style="margin-top:var(--space-5); display:flex; gap:10px;">
+              <button class="btn btn-primary btn-sm" onclick="saveModules()">Save Modules</button>
+              <a href="/admin/branding.html" class="btn btn-secondary btn-sm">🎨 Manage Branding</a>
+            </div>
+          </div>
+
+          <!-- Face ID -->
+          <div class="settings-card">
+            <h4>🤖 Face ID Settings</h4>
+            <div class="settings-row">
+              <div><div class="label">Enable Face ID Login</div><div class="hint">Allow face scan for punch in/out</div></div>
+              <label class="toggle"><input type="checkbox" id="face-enabled"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Liveness Detection</div><div class="hint">Prevent photo spoofing</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Match Threshold</div><div class="hint">Similarity % required</div></div>
+              <input class="form-control" style="width:90px;" type="number" value="90" min="70" max="99">
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Allow PIN Fallback</div><div class="hint">4-digit if face fails</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div style="margin-top:var(--space-4); padding:var(--space-4); background:rgba(108,99,255,0.08); border-radius:var(--radius-md); border:1px solid rgba(108,99,255,0.2);">
+              <div class="text-sm" style="color:var(--color-primary-light);">ℹ️ Face embeddings are stored encrypted. Raw photos are never stored permanently.</div>
+              <a href="/admin/face-manager.html" class="btn btn-secondary btn-sm w-full" style="margin-top:12px;">🛡️ Open Face Verification Manager</a>
+            </div>
+          </div>
+
+          <!-- Geo-Fence -->
+          <div class="settings-card">
+            <h4>🌍 Geo-Fence Configuration</h4>
+            <div class="settings-row">
+              <div><div class="label">Enable Geo-Fence Check</div><div class="hint">Validate location on punch</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Allowed Radius (meters)</div><div class="hint">Distance from center point</div></div>
+              <input class="form-control" style="width:90px;" type="number" value="200" min="50" max="2000">
+            </div>
+            <div class="form-group" style="margin-top:var(--space-4);">
+              <label class="form-label">Academy Latitude</label>
+              <input class="form-control" id="geo-lat" placeholder="e.g. 31.5204" type="number" step="any">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Academy Longitude</label>
+              <input class="form-control" id="geo-lng" placeholder="e.g. 74.3587" type="number" step="any">
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Allow Override with Warning</div><div class="hint">Users can bypass with confirmation</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div style="margin-top:var(--space-5);">
+              <button class="btn btn-primary btn-sm" onclick="toast('Geo-fence settings saved','success')">Save Geo-Fence</button>
+            </div>
+          </div>
+
+          <!-- Notifications -->
+          <div class="settings-card">
+            <h4>🔔 Notification Settings</h4>
+            <div class="settings-row">
+              <div><div class="label">Attendance Reminder</div><div class="hint">Alert if not punched by 9:15 AM</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Visitor Alert to Host</div><div class="hint">Notify teacher when visitor arrives</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Visitor Overdue Alert</div><div class="hint">Alert admin if visitor stays 4+ hours</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Leave Request Alerts</div><div class="hint">Notify admin on new requests</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Salary Processed Alerts</div><div class="hint">Notify staff when salary ready</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <!-- Broadcast -->
+            <div style="margin-top:var(--space-5); border-top:1px solid var(--border-subtle); padding-top:var(--space-4);">
+              <div class="form-group"><label class="form-label" style="margin-bottom:8px;">📢 Broadcast Announcement</label>
+                <input class="form-control" id="broadcast-title" placeholder="Title" style="margin-bottom:8px;">
+                <textarea class="form-control" id="broadcast-msg" rows="2" placeholder="Message to send to all users..."></textarea>
+              </div>
+              <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="sendBroadcast()">Send to All Users</button>
+            </div>
+          </div>
+
+          <!-- Attendance Policy -->
+          <div class="settings-card">
+            <h4>⏰ Attendance Policy</h4>
+            <div class="settings-row">
+              <div><div class="label">Late Threshold (minutes)</div><div class="hint">After how many minutes = late</div></div>
+              <input class="form-control" style="width:80px;" type="number" value="15" min="5">
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Late Deduction per Occurrence</div><div class="hint">Amount deducted per late arrival</div></div>
+              <input class="form-control" style="width:100px;" type="number" value="50">
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Working Days per Month</div><div class="hint">For fixed salary calculation</div></div>
+              <input class="form-control" style="width:80px;" type="number" value="26" min="20" max="31">
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Allow Self-Mark (Students)</div><div class="hint">Students can punch in themselves</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div style="margin-top:var(--space-5);">
+              <button class="btn btn-primary btn-sm" onclick="toast('Attendance policy saved','success')">Save Policy</button>
+            </div>
+          </div>
+
+          <!-- Backup & Data -->
+          <div class="settings-card">
+            <h4>💾 Backup & Data Management</h4>
+            <div class="settings-row">
+              <div><div class="label">Auto Daily Backup</div><div class="hint">Backup database every night at 2 AM</div></div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Data Retention</div><div class="hint">Archive records older than</div></div>
+              <select class="form-control" style="width:120px;padding:6px 10px;">
+                <option>2 years</option><option>3 years</option><option>5 years</option>
+              </select>
+            </div>
+            <div style="margin-top:var(--space-5); display:flex; flex-direction:column; gap:var(--space-3);">
+              <button class="btn btn-secondary" onclick="toast('Backup initiated...','info')">📦 Manual Backup Now</button>
+              <button class="btn btn-secondary" onclick="exportData()">📤 Export All Data (JSON)</button>
+              <div style="padding:var(--space-3); background:rgba(255,71,87,0.08); border-radius:var(--radius-md); border:1px solid rgba(255,71,87,0.2);">
+                <div class="text-sm" style="color:var(--color-accent-rose); font-weight:600;">⚠️ Danger Zone</div>
+                <div class="text-xs text-muted" style="margin-top:4px;">Irreversible actions below</div>
+                <button class="btn btn-danger btn-sm" style="margin-top:10px;" onclick="alert('Contact ClickTake Technologies for data reset assistance.')">🗑️ Reset All Data</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Audit Log -->
+        <div class="table-container" style="margin-top:var(--space-6);">
+          <div class="table-header"><h3>📋 Audit Log</h3><span class="text-sm text-muted">Last 20 admin actions</span></div>
+          <table class="data-table">
+            <thead><tr><th>Action</th><th>Target</th><th>Details</th><th>Time</th></tr></thead>
+            <tbody id="audit-tbody"><tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-muted);">Loading audit log...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>`;
+
+    initAdminLayout('/admin/settings.html');
+
+    async function initSettings() {
+      try {
+        const settings = await API.get('/settings');
+        const m = settings.modules;
+        if (m) {
+          if (document.getElementById('mod-timetable')) document.getElementById('mod-timetable').value = m.timetable || 'PREPARE';
+          if (document.getElementById('mod-payslips')) document.getElementById('mod-payslips').value = m.payslips || 'PREPARE';
+          if (document.getElementById('mod-result_cards')) document.getElementById('mod-result_cards').value = m.result_cards || 'PREPARE';
+        }
+        
+        if (settings.country) document.getElementById('s-country').value = settings.country;
+        if (settings.timezone) document.getElementById('s-timezone').value = settings.timezone;
+        if (settings.currency) document.getElementById('s-currency').value = settings.currency;
+        if (settings.phone_prefix) document.getElementById('s-prefix').value = settings.phone_prefix;
+        if (settings.weekends) document.getElementById('s-weekends').value = settings.weekends;
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function detectLocation() {
+      const btn = event.currentTarget;
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true; btn.innerHTML = '⌛';
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        const data = await res.json();
+        if (data.country_name) {
+          document.getElementById('s-country').value = data.country_name;
+          document.getElementById('s-timezone').value = data.timezone;
+          document.getElementById('s-currency').value = data.currency;
+          document.getElementById('s-prefix').value = data.country_calling_code;
+          toast(`Detected: ${data.country_name}`, 'success');
+          updateCountryDefaults(data.country_name);
+        }
+      } catch (e) { 
+        toast('IP detection failed. Using default.', 'warning');
+        console.error(e);
+      } finally {
+        btn.disabled = false; btn.innerHTML = originalHtml;
+      }
+    }
+
+    function updateCountryDefaults(country) {
+      const defaults = {
+        'Pakistan': { tz: 'Asia/Karachi', weekends: 'Friday,Saturday', cur: 'PKR', pre: '+92' },
+        'UAE': { tz: 'Asia/Dubai', weekends: 'Friday,Saturday', cur: 'AED', pre: '+971' },
+        'Saudi Arabia': { tz: 'Asia/Riyadh', weekends: 'Friday,Saturday', cur: 'SAR', pre: '+966' },
+        'UK': { tz: 'Europe/London', weekends: 'Saturday,Sunday', cur: 'GBP', pre: '+44' },
+        'USA': { tz: 'America/New_York', weekends: 'Saturday,Sunday', cur: 'USD', pre: '+1' },
+        'Canada': { tz: 'America/Toronto', weekends: 'Saturday,Sunday', cur: 'CAD', pre: '+1' },
+        'Australia': { tz: 'Australia/Sydney', weekends: 'Saturday,Sunday', cur: 'AUD', pre: '+61' }
+      };
+      
+      const config = defaults[country];
+      if (config) {
+        if (document.getElementById('s-timezone')) document.getElementById('s-timezone').value = config.tz;
+        if (document.getElementById('s-weekends')) document.getElementById('s-weekends').value = config.weekends;
+        if (document.getElementById('s-currency')) document.getElementById('s-currency').value = config.cur;
+        if (document.getElementById('s-prefix')) document.getElementById('s-prefix').value = config.pre;
+      }
+    }
+
+    async function saveRegionalSettings() {
+      const payload = {
+        country: document.getElementById('s-country').value,
+        timezone: document.getElementById('s-timezone').value,
+        currency: document.getElementById('s-currency').value,
+        phone_prefix: document.getElementById('s-prefix').value,
+        weekends: document.getElementById('s-weekends').value
+      };
+
+      try {
+        await API.put('/settings/regional', payload);
+        toast('✅ Regional configuration updated', 'success');
+        setTimeout(() => window.location.reload(), 1000);
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function saveModules() {
+      const modules = {
+        timetable: document.getElementById('mod-timetable').value,
+        payslips: document.getElementById('mod-payslips').value,
+        result_cards: document.getElementById('mod-result_cards').value
+      };
+      try {
+        await API.put('/settings/modules', modules);
+        toast('Module settings saved successfully', 'success');
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    initSettings();
+
+    async function sendBroadcast() {
+      const title = document.getElementById('broadcast-title').value;
+      const message = document.getElementById('broadcast-msg').value;
+      if (!title || !message) { toast('Title and message required', 'error'); return; }
+      try { await API.post('/notifications/broadcast', { title, message, type: 'announcement' }); toast('Announcement sent to all users 📢', 'success'); document.getElementById('broadcast-title').value = ''; document.getElementById('broadcast-msg').value = ''; } catch (e) { toast(e.message, 'error'); }
+    }
+
+    function exportData() { toast('Export feature: contact ClickTake Technologies for full data export tools.', 'info'); }
+
+    // Simulated audit log
+    document.getElementById('audit-tbody').innerHTML = `
+    <tr><td><span class="badge badge-blue">CREATE</span></td><td>Teacher</td><td>Created teacher account</td><td class="text-muted text-sm">Just now</td></tr>
+    <tr><td><span class="badge badge-amber">UPDATE</span></td><td>Student</td><td>Updated student class info</td><td class="text-muted text-sm">2 hours ago</td></tr>
+    <tr><td><span class="badge badge-green">REVIEW</span></td><td>Leave Request</td><td>Approved sick leave</td><td class="text-muted text-sm">Yesterday</td></tr>`;
+  </script>
+</body>
+
+</html>

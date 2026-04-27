@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Students — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+</head>
+
+<body class="gradient-mesh">
+    <div class="admin-layout" id="app"></div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal-overlay" id="modal-overlay" style="z-index: 2000;">
+        <div class="modal" style="max-width:620px;">
+            <div class="modal-header">
+                <h3 id="modal-title">Add Student</h3>
+                <button class="btn-close" onclick="closeModal()">✕</button>
+            </div>
+            <form id="student-form" onsubmit="saveStudent(event)">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group"><label class="form-label">Full Name <span
+                                    class="req">*</span></label><input class="form-control" id="f-name" required
+                                placeholder="Student full name"></div>
+                        <div class="form-group"><label class="form-label">Phone <small class="text-muted" id="phone-prefix-hint"></small></label><input class="form-control"
+                                id="f-phone" placeholder="03xx-xxxxxxx"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label class="form-label">Class <span class="req">*</span></label><input
+                                class="form-control" id="f-class" required placeholder="e.g. Class 10"></div>
+                        <div class="form-group"><label class="form-label">Section</label><input class="form-control"
+                                id="f-section" placeholder="e.g. A, B, C"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label class="form-label">Roll No</label><input class="form-control"
+                                id="f-roll" placeholder="e.g. 1024"></div>
+                        <div class="form-group"><label class="form-label">CNIC</label><input class="form-control"
+                                id="f-cnic" placeholder="00000-0000000-0"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label class="form-label">Parent Name</label><input class="form-control"
+                                id="f-parent" placeholder="Father/Guardian name"></div>
+                        <div class="form-group"><label class="form-label">Parent Phone</label><input
+                                class="form-control" id="f-parent-phone" placeholder="03xx-xxxxxxx"></div>
+                    </div>
+                    <div class="form-group"><label class="form-label">Medical Notes</label><textarea
+                            class="form-control" id="f-medical" rows="2"
+                            placeholder="Any allergies or medical conditions..."></textarea></div>
+                    <div class="form-group" id="f-status-grp" style="display:none;">
+                        <label class="form-label">Status</label>
+                        <select class="form-control" id="f-status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive (Alumni)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="save-btn">Add Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Credential Slip -->
+    <div class="modal-overlay" id="cred-modal" style="z-index: 2000;">
+        <div class="modal" style="max-width:400px;">
+            <div class="modal-header">
+                <h3 id="cred-title">🎉 Student Added</h3><button class="btn-close"
+                    onclick="document.getElementById('cred-modal').classList.remove('open')">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary text-sm" style="margin-bottom:var(--space-4);">Share these login credentials
+                    with the student or parent.</p>
+                <div class="cred-slip">
+                    <div class="cred-field"><span class="cred-key">Login ID</span><span class="cred-val"
+                            id="c-login-id">—</span></div>
+                    <div class="cred-field"><span class="cred-key">Temp Password</span><span class="cred-val"
+                            id="c-temp-pwd">—</span></div>
+                    <div class="cred-field"><span class="cred-key">Name</span><span class="cred-val"
+                            id="c-name">—</span></div>
+                    <div class="cred-field"><span class="cred-key">Portal URL</span><span class="cred-val text-sm"
+                            style="color:var(--color-accent-teal);">/login.html?role=student</span></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="copyCreds()">📋 Copy</button>
+                <button class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+                <button class="btn btn-primary"
+                    onclick="document.getElementById('cred-modal').classList.remove('open')">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
+    <script src="/js/face-api.min.js"></script>
+    <script src="/js/face-auth.js"></script>
+    <script>
+        document.getElementById('app').innerHTML = `
+    ${getSidebarHTML('students')}
+    <main class="main-content">
+      ${getTopbarHTML('Students')}
+      <div class="page-content">
+        <div class="table-container">
+          <div class="table-header">
+            <h3>🎓 All Students</h3>
+            <div class="flex items-center gap-3">
+              <div class="search-bar"><span>🔍</span><input type="text" id="search-input" placeholder="Search by name, roll no..." oninput="filterTable()"></div>
+              <input class="form-control" style="width:130px;padding:8px 12px;" id="class-filter" placeholder="Filter class" oninput="filterTable()">
+              <button class="btn btn-primary" onclick="openAddModal()">➕ Add Student</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="students-table">
+              <thead><tr><th>Student</th><th>Class</th><th>Roll No</th><th>Face ID</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="students-tbody"><tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>`;
+
+        initAdminLayout('/admin/students.html');
+        let allStudents = [], editingId = null;
+
+        async function loadStudents() {
+            try { allStudents = await API.get('/users/students'); renderTable(allStudents); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        function renderTable(students) {
+            const tbody = document.getElementById('students-tbody');
+            if (!students.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">No students found</td></tr>'; return; }
+            tbody.innerHTML = students.map(s => `<tr>
+      <td><div class="flex items-center gap-3">
+        <div class="avatar" style="background:var(--color-student);color:#111;">${avatarLetter(s.full_name)}</div>
+        <div><div class="font-semibold">${s.full_name}</div><div class="text-xs text-muted">${s.login_id}</div></div>
+      </div></td>
+      <td><span class="badge badge-blue">${s.class_name || '—'}${s.section ? ' - ' + s.section : ''}</span></td>
+      <td>${s.roll_no || '—'}</td>
+      <td><span class="badge ${s.is_face_enrolled ? 'badge-green' : 'badge-amber'}" title="Face ID Status">${s.is_face_enrolled ? '🟢 Ready' : '🟡 Pending'}</span></td>
+      <td><span class="badge ${s.status === 'active' ? 'badge-green' : 'badge-red'}">${s.status}</span></td>
+        <td><div class="flex gap-2">
+        <button class="btn btn-sm btn-secondary btn-icon action-edit" data-id="${s.id}" title="Edit">✏️</button>
+        <button class="btn btn-sm btn-secondary btn-icon action-reset-pwd" data-id="${s.id}" data-name="${s.full_name.replace(/"/g, '&quot;')}" title="Reset Password">🔑</button>
+        <button class="btn btn-sm btn-secondary btn-icon action-reset-face" data-id="${s.id}" data-name="${s.full_name.replace(/"/g, '&quot;')}" data-enrolled="${s.is_face_enrolled}" title="${s.is_face_enrolled ? 'Re-enroll Face' : 'Enroll Face'}">📸</button>
+        <button class="btn btn-sm btn-danger btn-icon action-deactivate" data-id="${s.id}" data-name="${s.full_name.replace(/"/g, '&quot;')}" title="Deactivate">🗑️</button>
+      </div></td>
+    </tr>`).join('');
+        }
+
+        function filterTable() {
+            const q = document.getElementById('search-input').value.toLowerCase();
+            const c = document.getElementById('class-filter').value.toLowerCase();
+            renderTable(allStudents.filter(s =>
+                (!q || s.full_name.toLowerCase().includes(q) || (s.roll_no || '').toLowerCase().includes(q)) &&
+                (!c || (s.class_name || '').toLowerCase().includes(c))
+            ));
+        }
+
+        function openAddModal() {
+            editingId = null;
+            document.getElementById('student-form').reset();
+            document.getElementById('modal-title').textContent = 'Add New Student';
+            document.getElementById('save-btn').textContent = 'Add Student';
+            document.getElementById('f-status-grp').style.display = 'none';
+            document.getElementById('modal-overlay').classList.add('open');
+        }
+
+        function openEditModal(id) {
+            const s = allStudents.find(x => x.id === id); if (!s) return;
+            editingId = id;
+            document.getElementById('modal-title').textContent = 'Edit Student';
+            document.getElementById('save-btn').textContent = 'Save Changes';
+            document.getElementById('f-name').value = s.full_name;
+            document.getElementById('f-phone').value = s.phone || '';
+            document.getElementById('f-class').value = s.class_name || '';
+            document.getElementById('f-section').value = s.section || '';
+            document.getElementById('f-roll').value = s.roll_no || '';
+            document.getElementById('f-cnic').value = s.cnic || '';
+            document.getElementById('f-parent').value = s.parent_name || '';
+            document.getElementById('f-parent-phone').value = s.parent_phone || '';
+            document.getElementById('f-medical').value = s.medical_notes || '';
+            document.getElementById('f-status').value = s.status || 'active';
+            document.getElementById('f-status-grp').style.display = 'block';
+            document.getElementById('modal-overlay').classList.add('open');
+        }
+
+        function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+        async function saveStudent(e) {
+            e.preventDefault();
+            const btn = document.getElementById('save-btn'); btn.disabled = true; btn.textContent = 'Saving...';
+            const payload = { full_name: document.getElementById('f-name').value, phone: document.getElementById('f-phone').value, cnic: document.getElementById('f-cnic').value, roll_no: document.getElementById('f-roll').value, class_name: document.getElementById('f-class').value, section: document.getElementById('f-section').value, parent_name: document.getElementById('f-parent').value, parent_phone: document.getElementById('f-parent-phone').value, medical_notes: document.getElementById('f-medical').value, status: document.getElementById('f-status').value };
+            try {
+                if (editingId) { await API.put(`/users/students/${editingId}`, payload); toast('Student updated', 'success'); closeModal(); loadStudents(); }
+                else { 
+                    const r = await API.post('/users/students', payload); 
+                    closeModal(); 
+                    document.getElementById('cred-title').textContent = '🎉 Student Added';
+                    document.getElementById('c-login-id').textContent = r.login_id; 
+                    document.getElementById('c-temp-pwd').textContent = r.temp_password; 
+                    document.getElementById('c-name').textContent = r.full_name; 
+                    document.getElementById('cred-modal').classList.add('open'); 
+                    loadStudents(); 
+                }
+            } catch (err) { toast(err.message, 'error'); }
+            finally { btn.disabled = false; btn.textContent = editingId ? 'Save Changes' : 'Add Student'; }
+        }
+
+        async function deactivate(id, name, event) {
+            console.log('Deactivate triggered', id, name);
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            if (!await confirmAction('Confirm Deactivation', `Remove ${name} from active students?`)) return;
+            try { await API.delete(`/users/${id}`); toast(`${name} deactivated`, 'info'); loadStudents(); } catch (e) { toast(e.message, 'error'); }
+        }
+
+        async function resetPwd(id, name, event) {
+            console.log('Reset Pwd triggered', id, name);
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            if (!await confirmAction('Reset Password', `⚠️ WARNING: This will immediately invalidate the current password for ${name}. A new temporary password will be generated. Continue?`)) return;
+            
+            const btn = event.target.closest('button');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '⌛';
+
+            try {
+                const r = await API.post(`/users/${id}/reset-password`);
+                document.getElementById('cred-title').textContent = '🔑 Password Reset';
+                document.getElementById('c-login-id').textContent = r.login_id;
+                document.getElementById('c-temp-pwd').textContent = r.temp_password;
+                document.getElementById('c-name').textContent = name;
+                document.getElementById('cred-modal').classList.add('open');
+                toast('✅ Password reset successfully', 'success');
+            } catch (e) { toast(e.message, 'error'); }
+            finally { btn.disabled = false; btn.innerHTML = originalHtml; }
+        }
+
+        function copyCreds() {
+            const id = document.getElementById('c-login-id').textContent;
+            const pwd = document.getElementById('c-temp-pwd').textContent;
+            const text = `ClickTake Academy Credentials\nLogin ID: ${id}\nTemp Password: ${pwd}\nURL: ${window.location.origin}/login.html`;
+            navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard!', 'success'));
+        }
+
+        async function resetFace(id, name, isEnrolled, event) {
+            console.log('Reset Face triggered', id, name);
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+            
+            if (isEnrolled == '1') {
+                if (!await confirmAction('Reset & Re-enroll', `Delete current face data and enroll a new face for ${name} now?`)) return;
+                try {
+                    await API.post(`/users/reset-face/${id}`);
+                    toast('Face data deleted. Starting camera...', 'info');
+                } catch (e) { return toast(e.message, 'error'); }
+            } else {
+                if (!await confirmAction('Enroll Face', `Start camera to enroll face for ${name}?`)) return;
+            }
+
+            if (typeof executeEnrollment === 'function') {
+                executeEnrollment(id, () => { 
+                    toast(`Face enrolled successfully for ${name}`, 'success');
+                    loadStudents(); 
+                });
+            } else {
+                toast('Face authentication module not loaded.', 'error');
+            }
+        }
+
+        // Event Delegation for Table Actions
+        document.getElementById('students-tbody').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            const name = btn.dataset.name;
+            const enrolled = btn.dataset.enrolled;
+            if (btn.classList.contains('action-edit')) openEditModal(parseInt(id));
+            else if (btn.classList.contains('action-reset-pwd')) resetPwd(id, name, e);
+            else if (btn.classList.contains('action-reset-face')) resetFace(id, name, enrolled, e);
+            else if (btn.classList.contains('action-deactivate')) deactivate(id, name, e);
+        });
+
+        if (new URLSearchParams(location.search).get('action') === 'add') setTimeout(openAddModal, 500);
+        loadStudents();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitor Check-In — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(ellipse 60% 50% at 30% 10%, rgba(247, 183, 49, 0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 80% 80%, rgba(0, 210, 211, 0.1) 0%, transparent 55%), var(--bg-900);
+        }
+
+        .kiosk-wrap {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-8) var(--space-4);
+        }
+
+        .kiosk-header {
+            text-align: center;
+            margin-bottom: var(--space-8);
+            animation: fadeInDown 0.5s ease;
+        }
+
+        .kiosk-header .icon {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: var(--space-3);
+        }
+
+        .kiosk-card {
+            width: 100%;
+            max-width: 560px;
+            background: linear-gradient(135deg, var(--bg-600), var(--bg-500));
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-2xl);
+            overflow: hidden;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .step-indicator {
+            display: flex;
+            padding: var(--space-5);
+            gap: var(--space-2);
+        }
+
+        .step-dot {
+            flex: 1;
+            height: 4px;
+            border-radius: var(--radius-full);
+            background: var(--bg-400);
+            transition: var(--transition-normal);
+        }
+
+        .step-dot.done {
+            background: var(--color-accent-green);
+        }
+
+        .step-dot.active {
+            background: var(--color-visitor);
+        }
+
+        .step-panel {
+            padding: var(--space-8);
+            display: none;
+        }
+
+        .step-panel.active {
+            display: block;
+            animation: fadeInRight 0.3s ease;
+        }
+
+        .step-title {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: var(--space-5);
+        }
+
+        .purpose-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-3);
+            margin-top: var(--space-2);
+        }
+
+        .purpose-btn {
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            background: var(--bg-700);
+            border: 2px solid var(--border-subtle);
+            cursor: pointer;
+            text-align: center;
+            transition: var(--transition-normal);
+        }
+
+        .purpose-btn:hover,
+        .purpose-btn.selected {
+            border-color: var(--color-visitor);
+            background: rgba(247, 183, 49, 0.08);
+        }
+
+        .purpose-btn .p-icon {
+            font-size: 1.8rem;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .purpose-btn .p-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-preview {
+            background: linear-gradient(135deg, var(--bg-700), var(--bg-600));
+            border: 2px solid var(--color-visitor);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .badge-preview::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--color-visitor);
+        }
+
+        .badge-id {
+            font-family: var(--font-mono, monospace);
+            font-size: 0.8rem;
+            color: var(--color-visitor);
+            margin-bottom: var(--space-3);
+            letter-spacing: 1px;
+        }
+
+        .badge-name {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .badge-host {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .badge-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: var(--space-2);
+        }
+
+        .qr-placeholder {
+            width: 80px;
+            height: 80px;
+            background: var(--bg-400);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: var(--space-4) auto 0;
+            border: 1px solid var(--border-medium);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="orb orb-1" style="width:300px;height:300px;"></div>
+    <div class="orb orb-2" style="width:200px;height:200px;"></div>
+
+    <div class="kiosk-wrap">
+        <div class="kiosk-header">
+            <span class="icon">🚪</span>
+            <h1 style="font-family:var(--font-display);font-size:1.8rem;">Visitor Check-In</h1>
+            <p style="color:var(--text-secondary);margin-top:8px;">Welcome! Please complete the check-in process.</p>
+        </div>
+
+        <div class="kiosk-card">
+            <!-- Step Indicators -->
+            <div class="step-indicator">
+                <div class="step-dot active" id="dot-1"></div>
+                <div class="step-dot" id="dot-2"></div>
+                <div class="step-dot" id="dot-3"></div>
+                <div class="step-dot" id="dot-4"></div>
+            </div>
+
+            <!-- Step 1: Purpose -->
+            <div class="step-panel active" id="step-1">
+                <div class="step-title">📋 Why are you visiting?</div>
+                <div class="purpose-grid" id="purpose-grid">
+                    <div class="purpose-btn" onclick="selectPurpose('Parent Meeting',this)"><span
+                            class="p-icon">👨‍👩‍👧</span><span class="p-label">Parent Meeting</span></div>
+                    <div class="purpose-btn" onclick="selectPurpose('Vendor/Delivery',this)"><span
+                            class="p-icon">📦</span><span class="p-label">Vendor / Delivery</span></div>
+                    <div class="purpose-btn" onclick="selectPurpose('Job Interview',this)"><span
+                            class="p-icon">💼</span><span class="p-label">Job Interview</span></div>
+                    <div class="purpose-btn" onclick="selectPurpose('Guest Lecture',this)"><span
+                            class="p-icon">🎤</span><span class="p-label">Guest Lecture</span></div>
+                    <div class="purpose-btn" onclick="selectPurpose('Other',this)" style="grid-column:span 2;"><span
+                            class="p-icon">✏️</span><span class="p-label">Other</span></div>
+                </div>
+                <div class="form-group" id="other-grp" style="display:none;margin-top:var(--space-4);">
+                    <input class="form-control" id="other-purpose" placeholder="Describe your visit purpose...">
+                </div>
+                <div style="margin-top:var(--space-6);">
+                    <button class="btn btn-primary" style="width:100%;padding:14px;" onclick="goStep(2)">Next →</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Details -->
+            <div class="step-panel" id="step-2">
+                <div class="step-title">👤 Your Details</div>
+                <div class="flex flex-col gap-4">
+                    <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input
+                            class="form-control" id="v-name" placeholder="Your full name" required></div>
+                    <div class="form-group"><label class="form-label">Phone Number <span
+                                class="req">*</span></label><input class="form-control" id="v-phone"
+                            placeholder="03xx-xxxxxxx" type="tel" required></div>
+                    <div class="form-group"><label class="form-label">CNIC (optional)</label><input class="form-control"
+                            id="v-cnic" placeholder="00000-0000000-0"></div>
+                    <div class="form-group"><label class="form-label">Who are you here to meet?</label>
+                        <select class="form-control" id="v-host">
+                            <option value="">Select a teacher/staff...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-3" style="margin-top:var(--space-6);">
+                    <button class="btn btn-secondary" style="flex:0 0 100px;" onclick="goStep(1)">← Back</button>
+                    <button class="btn btn-primary" style="flex:1;padding:14px;" onclick="goStep(3)">Next →</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Confirm -->
+            <div class="step-panel" id="step-3">
+                <div class="step-title">✅ Confirm Check-In</div>
+                <div
+                    style="background:var(--bg-700);border:1px solid var(--border-medium);border-radius:var(--radius-lg);padding:var(--space-5);margin-bottom:var(--space-5);">
+                    <div class="flex justify-between items-center" style="margin-bottom:10px;"><span
+                            class="text-muted text-sm">Purpose</span><span id="confirm-purpose"
+                            class="font-semibold"></span></div>
+                    <div class="flex justify-between items-center" style="margin-bottom:10px;"><span
+                            class="text-muted text-sm">Name</span><span id="confirm-name" class="font-semibold"></span>
+                    </div>
+                    <div class="flex justify-between items-center" style="margin-bottom:10px;"><span
+                            class="text-muted text-sm">Phone</span><span id="confirm-phone"></span></div>
+                    <div class="flex justify-between items-center"><span class="text-muted text-sm">Host</span><span
+                            id="confirm-host"></span></div>
+                </div>
+                <p class="text-secondary text-sm" style="margin-bottom:var(--space-5);">By checking in, you agree to
+                    follow academy rules and regulations.</p>
+                <div class="flex gap-3">
+                    <button class="btn btn-secondary" style="flex:0 0 100px;" onclick="goStep(2)">← Back</button>
+                    <button class="btn btn-primary" style="flex:1;padding:14px;" id="checkin-btn"
+                        onclick="submitCheckin()">✅ Confirm Check-In</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Badge -->
+            <div class="step-panel" id="step-4">
+                <div class="step-title">🎫 Your Visitor Badge</div>
+                <div class="badge-preview">
+                    <div class="badge-id" id="badge-id">VIS-20260422-001</div>
+                    <div style="font-size:2.5rem;margin-bottom:8px;">🚶</div>
+                    <div class="badge-name" id="badge-name">—</div>
+                    <div class="badge-host" id="badge-host">—</div>
+                    <div class="badge-time" id="badge-time">—</div>
+                    <div class="qr-placeholder">📲</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:8px;">Show this badge at reception
+                        for exit</div>
+                </div>
+                <div class="flex gap-3 " style="margin-top:var(--space-6);">
+                    <button class="btn btn-secondary" style="flex:1;" onclick="window.print()">🖨️ Print Badge</button>
+                    <button class="btn btn-success" style="flex:1;" onclick="resetKiosk()">✅ Done</button>
+                </div>
+                <div
+                    style="margin-top:var(--space-5);padding:var(--space-4);background:rgba(46,213,115,0.08);border:1px solid rgba(46,213,115,0.2);border-radius:var(--radius-lg);text-align:center;">
+                    <div style="color:var(--color-accent-green);font-weight:600;margin-bottom:4px;">🟢 Host Notified
+                    </div>
+                    <div class="text-sm text-muted" id="host-notif-msg">Your host has been notified of your arrival.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:var(--space-6);text-align:center;">
+            <small style="color:var(--text-muted);">ClickTake Academy · Visitor Management System</small>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="/js/api.js"></script>
+    <script>
+        let selectedPurpose = '';
+        let checkinData = {};
+
+        function selectPurpose(p, el) {
+            document.querySelectorAll('.purpose-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedPurpose = p;
+            document.getElementById('other-grp').style.display = p === 'Other' ? 'block' : 'none';
+        }
+
+        async function loadHosts() {
+            try {
+                const teachers = await API.get('/users/teachers');
+                const sel = document.getElementById('v-host');
+                teachers.filter(t => t.status === 'active').forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id; opt.textContent = t.full_name + (t.subject ? ` (${t.subject})` : '');
+                    sel.appendChild(opt);
+                });
+            } catch (e) { }
+        }
+
+        // Try to load hosts (needs a public endpoint — fallback gracefully)
+        loadHosts().catch(() => { });
+
+        function goStep(step) {
+            if (step === 2) {
+                const p = selectedPurpose === 'Other' ? document.getElementById('other-purpose').value : selectedPurpose;
+                if (!p) { toast('Please select a visit purpose', 'error'); return; }
+                checkinData.purpose = p;
+            }
+            if (step === 3) {
+                const name = document.getElementById('v-name').value.trim();
+                const phone = document.getElementById('v-phone').value.trim();
+                if (!name || !phone) { toast('Name and phone are required', 'error'); return; }
+                checkinData.name = name; checkinData.phone = phone;
+                checkinData.cnic = document.getElementById('v-cnic').value.trim();
+                const hostSel = document.getElementById('v-host');
+                checkinData.host_id = hostSel.value || null;
+                checkinData.host_name = hostSel.options[hostSel.selectedIndex]?.text || '—';
+
+                document.getElementById('confirm-purpose').textContent = checkinData.purpose;
+                document.getElementById('confirm-name').textContent = checkinData.name;
+                document.getElementById('confirm-phone').textContent = checkinData.phone;
+                document.getElementById('confirm-host').textContent = checkinData.host_name || '—';
+            }
+            document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(`step-${step}`).classList.add('active');
+            document.querySelectorAll('.step-dot').forEach((d, i) => {
+                d.className = 'step-dot' + (i + 1 < step ? ' done' : i + 1 === step ? ' active' : '');
+            });
+        }
+
+        async function submitCheckin() {
+            const btn = document.getElementById('checkin-btn');
+            btn.disabled = true; btn.textContent = 'Checking In...';
+            try {
+                const res = await API.post('/visitors/checkin', {
+                    full_name: checkinData.name,
+                    phone: checkinData.phone,
+                    cnic: checkinData.cnic || undefined,
+                    purpose: checkinData.purpose,
+                    host_id: checkinData.host_id ? parseInt(checkinData.host_id) : undefined,
+                });
+                document.getElementById('badge-id').textContent = res.visitor_id;
+                document.getElementById('badge-name').textContent = checkinData.name;
+                document.getElementById('badge-host').textContent = `Meeting: ${checkinData.host_name}`;
+                document.getElementById('badge-time').textContent = `Checked in at ${new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })}`;
+                if (checkinData.host_id && checkinData.host_name !== '—') {
+                    document.getElementById('host-notif-msg').textContent = `${checkinData.host_name} has been notified of your arrival.`;
+                }
+                goStep(4);
+                toast('Check-in successful! Welcome to ClickTake Academy 🎉', 'success');
+            } catch (e) {
+                toast(e.message, 'error'); btn.disabled = false; btn.textContent = '✅ Confirm Check-In';
+            }
+        }
+
+        function resetKiosk() {
+            selectedPurpose = ''; checkinData = {};
+            document.querySelectorAll('.purpose-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('v-name').value = '';
+            document.getElementById('v-phone').value = '';
+            document.getElementById('v-cnic').value = '';
+            document.getElementById('v-host').selectedIndex = 0;
+            document.getElementById('other-purpose').value = '';
+            document.getElementById('other-grp').style.display = 'none';
+            goStep(1);
+        }
+    </script>
+</body>
+
+</html>
