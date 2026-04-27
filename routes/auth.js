@@ -23,7 +23,14 @@ router.post('/login', async (req, res) => {
 
     if (error || !user) {
         console.log(`[AUTH] User not found or Supabase error. ID: "${login_id}", Error:`, error ? error.message : 'No user returned');
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ 
+            error: 'Invalid credentials', 
+            debug: { 
+                user_found: !!user, 
+                supabase_error: error ? error.message : null,
+                searched_id: login_id
+            } 
+        });
     }
 
     console.log(`[AUTH] User found: ${user.login_id} (Role: ${user.role}, Status: ${user.status})`);
