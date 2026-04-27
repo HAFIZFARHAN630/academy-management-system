@@ -1,16 +1,21 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const db = require('../database/db');
+const supabase = require('../database/supabase');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function generateLoginId(role, name) {
+async function generateLoginId(role) {
     const prefix = { teacher: 'TCH', student: 'STU', worker: 'WRK', admin: 'ADM' }[role] || 'USR';
-    const count = db.prepare("SELECT COUNT(*) as c FROM users WHERE role = ?").get(role).c + 1;
-    return `${prefix}-${String(count).padStart(3, '0')}`;
+    const { count, error } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', role);
+    
+    const nextNum = (count || 0) + 1;
+    return `${prefix}-${String(nextNum).padStart(3, '0')}`;
 }
 
 function generateTempPassword() {
@@ -20,157 +25,347 @@ function generateTempPassword() {
 
 // ─── SELF PROFILE (All Users) ───────────────────────────────────────────────
 
-router.get('/profile', (req, res) => {
-    const u = db.prepare("SELECT id, login_id, full_name, phone, role, photo, address, emergency_contact, preferred_language, is_face_enrolled FROM users WHERE id=?").get(req.user.id);
-    res.json(u);
+router.get('/profile', async (req, res) => {
+    const { data: user, error } = await supabase
+        .from('users')
+        .select('id, login_id, full_name, phone, role, photo, address, emergency_contact, preferred_language, is_face_enrolled')
+        .eq('id', req.user.id)
+        .single();
+    
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(user);
 });
 
-router.patch('/profile', (req, res) => {
+router.patch('/profile', async (req, res) => {
     const { full_name, phone, address, emergency_contact, preferred_language, photo } = req.body;
-    db.prepare(`UPDATE users SET 
-        full_name=COALESCE(?,full_name), 
-        phone=COALESCE(?,phone), 
-        address=COALESCE(?,address), 
-        emergency_contact=COALESCE(?,emergency_contact), 
-        preferred_language=COALESCE(?,preferred_language),
-        photo=COALESCE(?,photo)
-        WHERE id=?`)
-        .run(full_name, phone, address, emergency_contact, preferred_language, photo, req.user.id);
+    const { error } = await supabase
+        .from('users')
+        .update({
+            full_name,
+            phone,
+            address,
+            emergency_contact,
+            preferred_language,
+            photo
+        })
+        .eq('id', req.user.id);
+    
+    if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
 
-router.post('/face-enroll', (req, res) => {
+router.post('/face-enroll', async (req, res) => {
     const { embedding } = req.body;
     if (!embedding || !Array.isArray(embedding)) return res.status(400).json({ error: 'Valid face embedding Array required' });
 
-    db.prepare(`UPDATE users SET face_embedding=?, is_face_enrolled=1 WHERE id=?`)
-        .run(JSON.stringify(embedding), req.user.id);
+    const { error } = await supabase
+        .from('users')
+        .update({
+            face_embedding: JSON.stringify(embedding),
+            is_face_enrolled: 1
+        })
+        .eq('id', req.user.id);
+    
+    if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
 
-router.post('/face-enroll/:id', requireRole('admin'), (req, res) => {
+router.post('/face-enroll/:id', requireRole('admin'), async (req, res) => {
     const { embedding } = req.body;
     if (!embedding || !Array.isArray(embedding)) return res.status(400).json({ error: 'Valid face embedding Array required' });
 
-    db.prepare(`UPDATE users SET face_embedding=?, is_face_enrolled=1 WHERE id=?`)
-        .run(JSON.stringify(embedding), req.params.id);
+    const { error } = await supabase
+        .from('users')
+        .update({
+            face_embedding: JSON.stringify(embedding),
+            is_face_enrolled: 1
+        })
+        .eq('id', req.params.id);
+    
+    if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
 
-router.post('/reset-face/:id', requireRole('admin'), (req, res) => {
-    db.prepare(`UPDATE users SET face_embedding=NULL, is_face_enrolled=0 WHERE id=?`).run(req.params.id);
+router.post('/reset-face/:id', requireRole('admin'), async (req, res) => {
+    const { error } = await supabase
+        .from('users')
+        .update({
+            face_embedding: null,
+            is_face_enrolled: 0
+        })
+        .eq('id', req.params.id);
+    
+    if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
 
 // Generic Reset Password for any user (Admin only)
-router.post('/:id/reset-password', requireRole('admin'), (req, res) => {
+router.post('/:id/reset-password', requireRole('admin'), async (req, res) => {
     const temp = generateTempPassword();
     const hash = bcrypt.hashSync(temp, 10);
-    const user = db.prepare("SELECT login_id, full_name FROM users WHERE id=?").get(req.params.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
     
-    db.prepare("UPDATE users SET password=?, temp_password=1 WHERE id=?").run(hash, req.params.id);
-    db.prepare("INSERT INTO audit_log (admin_id, action, target_table, target_id, details) VALUES (?,?,?,?,?)")
-        .run(req.user.id, 'RESET_PWD', 'users', req.params.id, `Reset password for ${user.full_name} (${user.login_id})`);
+    const { data: user, error: userErr } = await supabase
+        .from('users')
+        .select('login_id, full_name')
+        .eq('id', req.params.id)
+        .single();
+    
+    if (userErr || !user) return res.status(404).json({ error: 'User not found' });
+    
+    await supabase
+        .from('users')
+        .update({ password: hash, temp_password: 1 })
+        .eq('id', req.params.id);
+    
+    await supabase
+        .from('audit_log')
+        .insert({
+            admin_id: req.user.id,
+            action: 'RESET_PWD',
+            target_table: 'users',
+            target_id: req.params.id,
+            details: `Reset password for ${user.full_name} (${user.login_id})`
+        });
         
     res.json({ success: true, temp_password: temp, login_id: user.login_id });
 });
 
 // Generic Deactivate
-router.delete('/:id', requireRole('admin'), (req, res) => {
-    db.prepare("UPDATE users SET status='inactive' WHERE id=?").run(req.params.id);
+router.delete('/:id', requireRole('admin'), async (req, res) => {
+    const { error } = await supabase
+        .from('users')
+        .update({ status: 'inactive' })
+        .eq('id', req.params.id);
+    
+    if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
 
 // ─── TEACHERS ────────────────────────────────────────────────────────────────
 
-router.get('/teachers', requireRole('admin'), (req, res) => {
-    const teachers = db.prepare("SELECT id,login_id,full_name,phone,cnic,subject,qualification,joining_date,base_salary,salary_type,status,last_login,photo,is_face_enrolled FROM users WHERE role='teacher' ORDER BY full_name").all();
+router.get('/teachers', requireRole('admin'), async (req, res) => {
+    const { data: teachers, error } = await supabase
+        .from('users')
+        .select('id,login_id,full_name,phone,cnic,subject,qualification,joining_date,base_salary,salary_type,status,last_login,photo,is_face_enrolled')
+        .eq('role', 'teacher')
+        .order('full_name');
+    
+    if (error) return res.status(500).json({ error: error.message });
     res.json(teachers);
 });
 
-router.post('/teachers', requireRole('admin'), (req, res) => {
+router.post('/teachers', requireRole('admin'), async (req, res) => {
     const { full_name, cnic, phone, subject, qualification, joining_date, salary_type, base_salary, hourly_rate } = req.body;
     if (!full_name || !phone) return res.status(400).json({ error: 'Name and phone required' });
-    const login_id = generateLoginId('teacher');
+    
+    const login_id = await generateLoginId('teacher');
     const temp = generateTempPassword();
     const hash = bcrypt.hashSync(temp, 10);
-    const result = db.prepare(`
-    INSERT INTO users (login_id,full_name,cnic,phone,role,password,temp_password,subject,qualification,joining_date,salary_type,base_salary,hourly_rate)
-    VALUES (?,?,?,?,'teacher',?,1,?,?,?,?,?,?)
-  `).run(login_id, full_name, cnic, phone, hash, subject, qualification, joining_date, salary_type, base_salary, hourly_rate);
+    
+    const { data: newUser, error } = await supabase
+        .from('users')
+        .insert({
+            login_id,
+            full_name,
+            cnic,
+            phone,
+            role: 'teacher',
+            password: hash,
+            temp_password: 1,
+            subject,
+            qualification,
+            joining_date,
+            salary_type,
+            base_salary,
+            hourly_rate
+        })
+        .select()
+        .single();
 
-    db.prepare("INSERT INTO audit_log (admin_id, action, target_table, target_id, details) VALUES (?,?,?,?,?)").run(req.user.id, 'CREATE', 'users', result.lastInsertRowid, `Created teacher: ${full_name}`);
-    res.json({ id: result.lastInsertRowid, login_id, temp_password: temp, full_name });
+    if (error) return res.status(500).json({ error: error.message });
+
+    await supabase
+        .from('audit_log')
+        .insert({
+            admin_id: req.user.id,
+            action: 'CREATE',
+            target_table: 'users',
+            target_id: newUser.id,
+            details: `Created teacher: ${full_name}`
+        });
+
+    res.json({ id: newUser.id, login_id, temp_password: temp, full_name });
 });
 
-router.put('/teachers/:id', requireRole('admin'), (req, res) => {
+router.put('/teachers/:id', requireRole('admin'), async (req, res) => {
     const { full_name, cnic, phone, subject, qualification, joining_date, salary_type, base_salary, hourly_rate, status } = req.body;
-    db.prepare(`UPDATE users SET full_name=?,cnic=?,phone=?,subject=?,qualification=?,joining_date=?,salary_type=?,base_salary=?,hourly_rate=?,status=? WHERE id=? AND role='teacher'`)
-        .run(full_name, cnic, phone, subject, qualification, joining_date, salary_type, base_salary, hourly_rate, status, req.params.id);
+    const { error } = await supabase
+        .from('users')
+        .update({
+            full_name,
+            cnic,
+            phone,
+            subject,
+            qualification,
+            joining_date,
+            salary_type,
+            base_salary,
+            hourly_rate,
+            status
+        })
+        .eq('id', req.params.id)
+        .eq('role', 'teacher');
+    
+    if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
 
-router.delete('/teachers/:id', requireRole('admin'), (req, res) => {
-    db.prepare("UPDATE users SET status='inactive' WHERE id=? AND role='teacher'").run(req.params.id);
+router.delete('/teachers/:id', requireRole('admin'), async (req, res) => {
+    const { error } = await supabase
+        .from('users')
+        .update({ status: 'inactive' })
+        .eq('id', req.params.id)
+        .eq('role', 'teacher');
+    
+    if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
 
 // ─── STUDENTS ────────────────────────────────────────────────────────────────
 
-router.get('/students', requireRole('admin', 'teacher'), (req, res) => {
+router.get('/students', requireRole('admin', 'teacher'), async (req, res) => {
     const { class_name, section } = req.query;
-    let q = "SELECT id,login_id,full_name,phone,roll_no,class_name,section,parent_name,parent_phone,status,photo,is_face_enrolled FROM users WHERE role='student'";
-    const params = [];
-    if (class_name) { q += ' AND class_name=?'; params.push(class_name); }
-    if (section) { q += ' AND section=?'; params.push(section); }
-    q += ' ORDER BY class_name, roll_no';
-    res.json(db.prepare(q).all(...params));
+    let query = supabase
+        .from('users')
+        .select('id,login_id,full_name,phone,roll_no,class_name,section,parent_name,parent_phone,status,photo,is_face_enrolled')
+        .eq('role', 'student');
+    
+    if (class_name) query = query.eq('class_name', class_name);
+    if (section) query = query.eq('section', section);
+    
+    const { data: students, error } = await query.order('class_name').order('roll_no');
+    
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(students);
 });
 
-router.post('/students', requireRole('admin'), (req, res) => {
+router.post('/students', requireRole('admin'), async (req, res) => {
     const { full_name, cnic, phone, roll_no, class_name, section, parent_name, parent_phone, medical_notes } = req.body;
     if (!full_name || !class_name) return res.status(400).json({ error: 'Name and class required' });
-    const login_id = generateLoginId('student');
+    
+    const login_id = await generateLoginId('student');
     const temp = generateTempPassword();
     const hash = bcrypt.hashSync(temp, 10);
-    const result = db.prepare(`
-    INSERT INTO users (login_id,full_name,cnic,phone,role,password,temp_password,roll_no,class_name,section,parent_name,parent_phone,medical_notes)
-    VALUES (?,?,?,?,'student',?,1,?,?,?,?,?,?)
-  `).run(login_id, full_name, cnic, phone, hash, roll_no, class_name, section, parent_name, parent_phone, medical_notes);
-    res.json({ id: result.lastInsertRowid, login_id, temp_password: temp, full_name });
+    
+    const { data: newUser, error } = await supabase
+        .from('users')
+        .insert({
+            login_id,
+            full_name,
+            cnic,
+            phone,
+            role: 'student',
+            password: hash,
+            temp_password: 1,
+            roll_no,
+            class_name,
+            section,
+            parent_name,
+            parent_phone,
+            medical_notes
+        })
+        .select()
+        .single();
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ id: newUser.id, login_id, temp_password: temp, full_name });
 });
 
-router.put('/students/:id', requireRole('admin'), (req, res) => {
+router.put('/students/:id', requireRole('admin'), async (req, res) => {
     const { full_name, cnic, phone, roll_no, class_name, section, parent_name, parent_phone, medical_notes, status } = req.body;
-    db.prepare("UPDATE users SET full_name=?,cnic=?,phone=?,roll_no=?,class_name=?,section=?,parent_name=?,parent_phone=?,medical_notes=?,status=? WHERE id=? AND role='student'")
-        .run(full_name, cnic, phone, roll_no, class_name, section, parent_name, parent_phone, medical_notes, status, req.params.id);
+    const { error } = await supabase
+        .from('users')
+        .update({
+            full_name,
+            cnic,
+            phone,
+            roll_no,
+            class_name,
+            section,
+            parent_name,
+            parent_phone,
+            medical_notes,
+            status
+        })
+        .eq('id', req.params.id)
+        .eq('role', 'student');
+    
+    if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
 
 // ─── WORKERS ────────────────────────────────────────────────────────────────
 
-router.get('/workers', requireRole('admin'), (req, res) => {
-    res.json(db.prepare("SELECT id,login_id,full_name,phone,cnic,designation,shift_start,shift_end,hourly_rate,status,photo,is_face_enrolled FROM users WHERE role='worker' ORDER BY full_name").all());
+router.get('/workers', requireRole('admin'), async (req, res) => {
+    const { data: workers, error } = await supabase
+        .from('users')
+        .select('id,login_id,full_name,phone,cnic,designation,shift_start,shift_end,hourly_rate,status,photo,is_face_enrolled')
+        .eq('role', 'worker')
+        .order('full_name');
+    
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(workers);
 });
 
-router.post('/workers', requireRole('admin'), (req, res) => {
+router.post('/workers', requireRole('admin'), async (req, res) => {
     const { full_name, cnic, phone, designation, shift_start, shift_end, hourly_rate } = req.body;
     if (!full_name || !phone) return res.status(400).json({ error: 'Name and phone required' });
-    const login_id = generateLoginId('worker');
+    
+    const login_id = await generateLoginId('worker');
     const temp = generateTempPassword();
     const hash = bcrypt.hashSync(temp, 10);
-    const result = db.prepare(`
-    INSERT INTO users (login_id,full_name,cnic,phone,role,password,temp_password,designation,shift_start,shift_end,hourly_rate,salary_type)
-    VALUES (?,?,?,?,'worker',?,1,?,?,?,?,'hourly')
-  `).run(login_id, full_name, cnic, phone, hash, designation, shift_start, shift_end, hourly_rate);
-    res.json({ id: result.lastInsertRowid, login_id, temp_password: temp, full_name });
+    
+    const { data: newUser, error } = await supabase
+        .from('users')
+        .insert({
+            login_id,
+            full_name,
+            cnic,
+            phone,
+            role: 'worker',
+            password: hash,
+            temp_password: 1,
+            designation,
+            shift_start,
+            shift_end,
+            hourly_rate,
+            salary_type: 'hourly'
+        })
+        .select()
+        .single();
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ id: newUser.id, login_id, temp_password: temp, full_name });
 });
 
-router.put('/workers/:id', requireRole('admin'), (req, res) => {
+router.put('/workers/:id', requireRole('admin'), async (req, res) => {
     const { full_name, cnic, phone, designation, shift_start, shift_end, hourly_rate, status } = req.body;
-    db.prepare("UPDATE users SET full_name=?,cnic=?,phone=?,designation=?,shift_start=?,shift_end=?,hourly_rate=?,status=? WHERE id=? AND role='worker'")
-        .run(full_name, cnic, phone, designation, shift_start, shift_end, hourly_rate, status, req.params.id);
+    const { error } = await supabase
+        .from('users')
+        .update({
+            full_name,
+            cnic,
+            phone,
+            designation,
+            shift_start,
+            shift_end,
+            hourly_rate,
+            status
+        })
+        .eq('id', req.params.id)
+        .eq('role', 'worker');
+    
+    if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true });
 });
 

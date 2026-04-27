@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const supabase = require('./database/supabase');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
@@ -25,17 +27,48 @@ require('./cron').initCron();
 
 // ─── Admin Stats Endpoint ─────────────────────────────────────────────────────
 const { authMiddleware, requireRole } = require('./middleware/auth');
-const db = require('./database/db');
 
-app.get('/api/stats', authMiddleware, requireRole('admin'), (req, res) => {
-    const today = new Date().toISOString().split('T')[0];
-    const total_teachers = db.prepare("SELECT COUNT(*) as c FROM users WHERE role='teacher' AND status='active'").get().c;
-    const total_students = db.prepare("SELECT COUNT(*) as c FROM users WHERE role='student' AND status='active'").get().c;
-    const total_workers = db.prepare("SELECT COUNT(*) as c FROM users WHERE role='worker' AND status='active'").get().c;
-    const present_today = db.prepare("SELECT COUNT(*) as c FROM attendance WHERE date=? AND status IN ('present','late')").get(today).c;
-    const active_visitors = db.prepare("SELECT COUNT(*) as c FROM visitors WHERE status='inside'").get().c;
-    const pending_leaves = db.prepare("SELECT COUNT(*) as c FROM leave_requests WHERE status='pending'").get().c;
-    res.json({ total_teachers, total_students, total_workers, present_today, active_visitors, pending_leaves });
+// ─── Seed Admin Account ───────────────────────────────────────────────────────
+const bcrypt = require('bcryptjs');
+async function seedAdmin() {
+    const { count } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'admin');
+    if (count === 0) {
+        const hash = bcrypt.hashSync('Admin@1234', 10);
+        await supabase.from('users').insert({
+            login_id: 'ADMIN-001',
+            full_name: 'Academy Admin',
+            phone: '03000000000',
+            role: 'admin',
+            password: hash,
+            temp_password: 0
+        });
+        console.log('✅ Admin seeded: ADMIN-001 / Admin@1234');
+    }
+}
+seedAdmin();
+
+app.get('/api/stats', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+
+        const { count: total_teachers } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'teacher').eq('status', 'active');
+        const { count: total_students } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student').eq('status', 'active');
+        const { count: total_workers } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'worker').eq('status', 'active');
+        const { count: present_today } = await supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('date', today).in('status', ['present', 'late']);
+        const { count: active_visitors } = await supabase.from('visitors').select('*', { count: 'exact', head: true }).eq('status', 'inside');
+        const { count: pending_leaves } = await supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+
+        res.json({
+            total_teachers: total_teachers || 0,
+            total_students: total_students || 0,
+            total_workers: total_workers || 0,
+            present_today: present_today || 0,
+            active_visitors: active_visitors || 0,
+            pending_leaves: pending_leaves || 0
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ─── Base Route (Health Check) ────────────────────────────────────────────────

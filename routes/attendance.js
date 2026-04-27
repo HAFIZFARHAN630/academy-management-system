@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const db = require('../database/db');
+const supabase = require('../database/supabase');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
 router.use(authMiddleware);
@@ -7,72 +7,127 @@ router.use(authMiddleware);
 // Real-time clients for SSE
 const clients = new Set();
 
-// GET /api/attendance/live  — SSE stream
-router.get('/live', requireRole('admin'), (req, res) => {
+// GET /api/attendance/live — SSE stream
+router.get('/live', requireRole('admin'), async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  const send = () => {
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
-    const data = getLiveData(today);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  const send = async () => {
+    try {
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+      const data = await getLiveData(today);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    } catch (err) {
+      console.error('SSE send error:', err);
+    }
   };
 
   clients.add(send);
-  send();
+  await send();
   const interval = setInterval(send, 10000);
   req.on('close', () => { clients.delete(send); clearInterval(interval); });
 });
 
-function getLiveData(date) {
-  const teachers = db.prepare(`
-    SELECT u.id,u.full_name,u.login_id,u.photo,
-      a.punch_in,a.punch_out,a.status
-    FROM users u LEFT JOIN attendance a ON a.user_id=u.id AND a.date=?
-    WHERE u.role='teacher' AND u.status='active'
-    ORDER BY u.full_name
-  `).all(date);
+async function getLiveData(date) {
+  // We use multiple select calls or a single RPC/Complex query. 
+  // For simplicity and matching current logic, we'll do separate calls.
+  
+  // Teachers
+  const { data: teachers } = await supabase
+    .from('users')
+    .select(`
+      id, full_name, login_id, photo,
+      attendance!left(punch_in, punch_out, status)
+    `)
+    .eq('role', 'teacher')
+    .eq('status', 'active')
+    .eq('attendance.date', date);
 
-  const students = db.prepare(`
-    SELECT u.id,u.full_name,u.login_id,u.photo,u.class_name,u.section,u.roll_no,
-      a.punch_in,a.punch_out,a.status,a.is_manual
-    FROM users u LEFT JOIN attendance a ON a.user_id=u.id AND a.date=?
-    WHERE u.role='student' AND u.status='active'
-    ORDER BY u.class_name, u.roll_no
-  `).all(date);
+  // Flatten the attendance data from the join
+  const processedTeachers = teachers?.map(u => ({
+    ...u,
+    punch_in: u.attendance?.[0]?.punch_in || null,
+    punch_out: u.attendance?.[0]?.punch_out || null,
+    status: u.attendance?.[0]?.status || null
+  })) || [];
 
-  const workers = db.prepare(`
-    SELECT u.id,u.full_name,u.login_id,u.photo,u.designation,
-      a.punch_in,a.punch_out,a.status
-    FROM users u LEFT JOIN attendance a ON a.user_id=u.id AND a.date=?
-    WHERE u.role='worker' AND u.status='active'
-    ORDER BY u.full_name
-  `).all(date);
+  // Students
+  const { data: students } = await supabase
+    .from('users')
+    .select(`
+      id, full_name, login_id, photo, class_name, section, roll_no,
+      attendance!left(punch_in, punch_out, status, is_manual)
+    `)
+    .eq('role', 'student')
+    .eq('status', 'active')
+    .eq('attendance.date', date);
 
-  const visitors = db.prepare(`
-    SELECT v.*,u.full_name as host_name FROM visitors v
-    LEFT JOIN users u ON u.id=v.host_id
-    WHERE v.status='inside' ORDER BY v.check_in DESC
-  `).all();
+  const processedStudents = students?.map(u => ({
+    ...u,
+    punch_in: u.attendance?.[0]?.punch_in || null,
+    punch_out: u.attendance?.[0]?.punch_out || null,
+    status: u.attendance?.[0]?.status || null,
+    is_manual: u.attendance?.[0]?.is_manual || null
+  })) || [];
 
-  return { teachers, students, workers, visitors, timestamp: Date.now() };
+  // Workers
+  const { data: workers } = await supabase
+    .from('users')
+    .select(`
+      id, full_name, login_id, photo, designation,
+      attendance!left(punch_in, punch_out, status)
+    `)
+    .eq('role', 'worker')
+    .eq('status', 'active')
+    .eq('attendance.date', date);
+
+  const processedWorkers = workers?.map(u => ({
+    ...u,
+    punch_in: u.attendance?.[0]?.punch_in || null,
+    punch_out: u.attendance?.[0]?.punch_out || null,
+    status: u.attendance?.[0]?.status || null
+  })) || [];
+
+  // Visitors
+  const { data: visitors } = await supabase
+    .from('visitors')
+    .select('*, users(full_name)')
+    .eq('status', 'inside')
+    .order('check_in', { ascending: false });
+
+  const processedVisitors = visitors?.map(v => ({
+    ...v,
+    host_name: v.users?.full_name || null
+  })) || [];
+
+  return { teachers: processedTeachers, students: processedStudents, workers: processedWorkers, visitors: processedVisitors, timestamp: Date.now() };
 }
 
 // Helper for local date/time
 const getToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
 const getNowTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
 
-// POST /api/attendance/punch  — Punch In/Out
-router.post('/punch', (req, res) => {
+// POST /api/attendance/punch — Punch In/Out
+router.post('/punch', async (req, res) => {
   const today = getToday();
   const now = Math.floor(Date.now() / 1000);
   const { lat, lng, device, reason } = req.body;
   const location = lat && lng ? JSON.stringify({ lat, lng }) : null;
 
-  const existing = db.prepare("SELECT * FROM attendance WHERE user_id=? AND date=?").get(req.user.id, today);
-  const user = db.prepare("SELECT shift_start, shift_end, role FROM users WHERE id=?").get(req.user.id);
+  const { data: existing } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .eq('date', today)
+    .maybeSingle();
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('shift_start, shift_end, role')
+    .eq('id', req.user.id)
+    .single();
 
   if (!existing) {
     // Punch In
@@ -84,8 +139,19 @@ router.post('/punch', (req, res) => {
         if (new Date().getHours() >= 9) status = 'late';
     }
 
-    db.prepare("INSERT INTO attendance (user_id,punch_in,date,location_in,device_in,status,location_lat,location_lng,method) VALUES (?,?,?,?,?,?,?,?,'manual')")
-      .run(req.user.id, now, today, location, device, status, lat || null, lng || null);
+    await supabase
+      .from('attendance')
+      .insert({
+        user_id: req.user.id,
+        punch_in: now,
+        date: today,
+        location_in: location,
+        device_in: device,
+        status: status,
+        location_lat: lat || null,
+        location_lng: lng || null,
+        method: 'manual'
+      });
     
     return res.json({ action: 'punch_in', time: now, status });
   }
@@ -109,18 +175,20 @@ router.post('/punch', (req, res) => {
     }
 
     const duration = now - existing.punch_in;
-    db.prepare(`
-      UPDATE attendance SET 
-        punch_out=?, location_out=?, device_out=?, 
-        early_leave=?, early_leave_reason=?, early_leave_status=?,
-        late_checkout=?, late_checkout_reason=?, late_checkout_status=?
-      WHERE id=?
-    `).run(
-        now, location, device, 
-        isEarly, isEarly ? reason : null, isEarly ? 'pending' : 'approved',
-        isLate, isLate ? reason : null, isLate ? 'flagged' : 'approved',
-        existing.id
-    );
+    await supabase
+      .from('attendance')
+      .update({
+        punch_out: now,
+        location_out: location,
+        device_out: device,
+        early_leave: isEarly,
+        early_leave_reason: isEarly ? reason : null,
+        early_leave_status: isEarly ? 'pending' : 'approved',
+        late_checkout: isLate,
+        late_checkout_reason: isLate ? reason : null,
+        late_checkout_status: isLate ? 'flagged' : 'approved'
+      })
+      .eq('id', existing.id);
     
     return res.json({ 
       action: 'punch_out', 
@@ -135,51 +203,100 @@ router.post('/punch', (req, res) => {
 });
 
 // GET /api/attendance/my-status
-router.get('/my-status', (req, res) => {
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
-  const record = db.prepare("SELECT * FROM attendance WHERE user_id=? AND date=?").get(req.user.id, today);
+router.get('/my-status', async (req, res) => {
+  const today = getToday();
+  const { data: record } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .eq('date', today)
+    .maybeSingle();
+    
   res.json(record || { status: 'not_punched' });
 });
 
 // GET /api/attendance/daily-report?date=YYYY-MM-DD
-router.get('/daily-report', requireRole('admin'), (req, res) => {
-  const date = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
-  const records = db.prepare(`
-    SELECT u.id, u.full_name, u.login_id, u.role, u.class_name,
-      a.punch_in, a.punch_out, a.status, a.is_manual, a.method
-    FROM users u LEFT JOIN attendance a ON a.user_id=u.id AND a.date=?
-    WHERE u.status='active' AND u.role != 'admin'
-    ORDER BY u.role, u.full_name
-  `).all(date);
-  res.json(records);
+router.get('/daily-report', requireRole('admin'), async (req, res) => {
+  const date = req.query.date || getToday();
+  
+  const { data: records, error } = await supabase
+    .from('users')
+    .select(`
+      id, full_name, login_id, role, class_name,
+      attendance!left(punch_in, punch_out, status, is_manual, method)
+    `)
+    .neq('role', 'admin')
+    .eq('status', 'active')
+    .eq('attendance.date', date)
+    .order('role')
+    .order('full_name');
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const flattened = records.map(u => ({
+    ...u,
+    punch_in: u.attendance?.[0]?.punch_in || null,
+    punch_out: u.attendance?.[0]?.punch_out || null,
+    status: u.attendance?.[0]?.status || null,
+    is_manual: u.attendance?.[0]?.is_manual || null,
+    method: u.attendance?.[0]?.method || null
+  }));
+
+  res.json(flattened);
 });
 
-// POST /api/attendance/mark  — Admin/Teacher manual mark
-router.post('/mark', requireRole('admin', 'teacher'), (req, res) => {
+// POST /api/attendance/mark — Admin/Teacher manual mark
+router.post('/mark', requireRole('admin', 'teacher'), async (req, res) => {
   const { user_id, date, status, notes } = req.body;
-  const today = date || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+  const today = date || getToday();
   const now = Math.floor(Date.now() / 1000);
 
-  const existing = db.prepare("SELECT * FROM attendance WHERE user_id=? AND date=?").get(user_id, today);
+  const { data: existing } = await supabase
+    .from('attendance')
+    .select('id')
+    .eq('user_id', user_id)
+    .eq('date', today)
+    .maybeSingle();
+
   if (existing) {
-    db.prepare("UPDATE attendance SET status=?,is_manual=1,marked_by=?,notes=? WHERE id=?")
-      .run(status, req.user.id, notes, existing.id);
+    await supabase
+      .from('attendance')
+      .update({
+        status,
+        is_manual: 1,
+        marked_by: req.user.id,
+        notes
+      })
+      .eq('id', existing.id);
   } else {
-    db.prepare("INSERT INTO attendance (user_id,date,status,is_manual,marked_by,notes,punch_in) VALUES (?,?,?,1,?,?,?)")
-      .run(user_id, today, status, req.user.id, notes, now);
+    await supabase
+      .from('attendance')
+      .insert({
+        user_id,
+        date: today,
+        status,
+        is_manual: 1,
+        marked_by: req.user.id,
+        notes,
+        punch_in: now
+      });
   }
   res.json({ success: true });
 });
 
-// GET /api/attendance/summary/:userId  — Monthly summary
-router.get('/summary/:userId', (req, res) => {
+// GET /api/attendance/summary/:userId — Monthly summary
+router.get('/summary/:userId', async (req, res) => {
   const { month } = req.query; // YYYY-MM
   const m = month || new Date().toISOString().slice(0, 7);
-  const records = db.prepare(`
-    SELECT date, punch_in, punch_out, status, is_manual
-    FROM attendance WHERE user_id=? AND date LIKE ?
-    ORDER BY date
-  `).all(req.params.userId, `${m}%`);
+  
+  const { data: records, error } = await supabase
+    .from('attendance')
+    .select('date, punch_in, punch_out, status, is_manual')
+    .eq('user_id', req.params.userId)
+    .like('date', `${m}%`)
+    .order('date');
+
+  if (error) return res.status(500).json({ error: error.message });
 
   const present = records.filter(r => r.status === 'present' || r.status === 'late').length;
   const absent = records.filter(r => r.status === 'absent').length;
@@ -189,26 +306,45 @@ router.get('/summary/:userId', (req, res) => {
 });
 
 // GET /api/attendance/early-leaves — Admin list
-router.get('/early-leaves', requireRole('admin'), (req, res) => {
-  const records = db.prepare(`
-    SELECT a.*, u.full_name, u.login_id, u.role, u.shift_end
-    FROM attendance a JOIN users u ON a.user_id=u.id
-    WHERE a.early_leave=1 AND a.early_leave_status='pending'
-    ORDER BY a.date DESC, a.punch_out DESC
-  `).all();
-  res.json(records);
+router.get('/early-leaves', requireRole('admin'), async (req, res) => {
+  const { data: records, error } = await supabase
+    .from('attendance')
+    .select('*, users(full_name, login_id, role, shift_end)')
+    .eq('early_leave', 1)
+    .eq('early_leave_status', 'pending')
+    .order('date', { ascending: false })
+    .order('punch_out', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const flattened = records.map(r => ({
+    ...r,
+    full_name: r.users?.full_name,
+    login_id: r.users?.login_id,
+    role: r.users?.role,
+    shift_end: r.users?.shift_end
+  }));
+
+  res.json(flattened);
 });
 
 // POST /api/attendance/early-leaves/:id/review — Admin action
-router.post('/early-leaves/:id/review', requireRole('admin'), (req, res) => {
+router.post('/early-leaves/:id/review', requireRole('admin'), async (req, res) => {
   const { status, comment } = req.body; // approved, flagged, rejected
   if (!['approved', 'flagged', 'rejected'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
 
-  db.prepare("UPDATE attendance SET early_leave_status=?, early_leave_reviewed_by=?, notes=COALESCE(?, notes) WHERE id=?")
-    .run(status, req.user.id, comment, req.params.id);
+  const { error } = await supabase
+    .from('attendance')
+    .update({
+        early_leave_status: status,
+        early_leave_reviewed_by: req.user.id,
+        notes: comment // Simplification, append to notes if needed
+    })
+    .eq('id', req.params.id);
   
+  if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 

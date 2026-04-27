@@ -8,6 +8,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.104.1",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.9.0",
     "cloudinary": "^1.41.3",
