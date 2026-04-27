@@ -1,5 +1,5 @@
 /* ─── api.js — Fetch wrapper with JWT auth ──────────────────────────────── */
-const API_BASE = '/api';
+const API_BASE = 'https://academy-management-system-40i1.onrender.com/api';
 let APP_CONFIG = { currency: 'PKR', phone_prefix: '+92', timezone: 'Asia/Karachi' };
 
 function getToken() { return localStorage.getItem('ams_token'); }
