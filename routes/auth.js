@@ -13,6 +13,7 @@ router.post('/login', async (req, res) => {
     const { login_id, password } = req.body;
     if (!login_id || !password) return res.status(400).json({ error: 'Login ID and password are required' });
 
+    console.log(`[AUTH] Login attempt for ID: "${login_id}"`);
     const { data: user, error } = await supabase
         .from('users')
         .select('*')
@@ -20,18 +21,26 @@ router.post('/login', async (req, res) => {
         .neq('status', 'inactive')
         .single();
 
-    if (error || !user) return res.status(401).json({ error: 'Invalid credentials' });
+    if (error || !user) {
+        console.log(`[AUTH] User not found or Supabase error. ID: "${login_id}", Error:`, error ? error.message : 'No user returned');
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    console.log(`[AUTH] User found: ${user.login_id} (Role: ${user.role}, Status: ${user.status})`);
 
     // Check lockout
     const now = Math.floor(Date.now() / 1000);
     if (user.locked_until && user.locked_until > now) {
         const remaining = Math.ceil((user.locked_until - now) / 60);
+        console.log(`[AUTH] User ${user.login_id} is currently locked.`);
         return res.status(403).json({ error: `Account locked. Try again in ${remaining} minute(s)` });
     }
 
     const match = bcrypt.compareSync(password, user.password);
+    console.log(`[AUTH] Password match for ${user.login_id}: ${match}`);
     if (!match) {
         const attempts = (user.failed_attempts || 0) + 1;
+        console.log(`[AUTH] Failed attempt #${attempts} for ${user.login_id}`);
         if (attempts >= MAX_ATTEMPTS) {
             await supabase
                 .from('users')
