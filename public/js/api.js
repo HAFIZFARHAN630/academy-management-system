@@ -31,6 +31,23 @@ const API = {
     delete: (path) => apiFetch(path, { method: 'DELETE' }),
 };
 
+async function uploadToCloudinary(file) {
+    if (!file) return null;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/users/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
+    return data.url;
+}
+
 // ─── Toast System ────────────────────────────────────────────────────────────
 function toast(message, type = 'info', duration = 3000) {
     let container = document.getElementById('toast-container');
@@ -50,11 +67,20 @@ function toast(message, type = 'info', duration = 3000) {
 // ─── Format Helpers ───────────────────────────────────────────────────────────
 function formatTime(unix) {
     if (!unix) return '—';
-    return new Date(unix * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date(unix * 1000).toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: APP_CONFIG.timezone || 'Asia/Karachi'
+    });
 }
 function formatDate(unix) {
     if (!unix) return '—';
-    return new Date(unix * 1000).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+    return new Date(unix * 1000).toLocaleDateString([], { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric',
+        timeZone: APP_CONFIG.timezone || 'Asia/Karachi'
+    });
 }
 function formatDuration(seconds) {
     if (!seconds) return '—';

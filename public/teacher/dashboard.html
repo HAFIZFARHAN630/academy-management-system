@@ -155,8 +155,8 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-label">Attendance Status</div>
-                    <div id="punch-status">
+                    <div class="stat-label">Attendance Log</div>
+                    <div id="punch-log-status">
                         <span class="badge" style="background:rgba(255,255,255,0.1);color:var(--text-secondary);">⌛ Checking...</span>
                     </div>
                 </div>
@@ -282,15 +282,15 @@
     <script>
         if (!requireAuth(['teacher'])) { }
 
-        const getLocalDate = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
-        const getLocalTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
+        const getLocalDate = () => new Date().toLocaleDateString('en-CA', { timeZone: APP_CONFIG.timezone || 'Asia/Karachi' });
+        const getLocalTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: APP_CONFIG.timezone || 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
 
         const u = getUser();
         document.getElementById('u-name').textContent = u.full_name?.split(' ')[0] || 'Teacher';
         document.getElementById('u-id').innerHTML = `ID: <span class="font-bold">${u.login_id}</span>`;
         document.getElementById('nav-avatar').textContent = avatarLetter(u.full_name || 'T');
 
-        setInterval(() => document.getElementById('live-clock').textContent = new Date().toLocaleTimeString('en-US', { hour12: false }), 1000);
+        setInterval(() => document.getElementById('live-clock').textContent = getLocalTime(), 1000);
 
         let liveTimer;
         function updateLiveDuration(punchInTime) {
@@ -382,26 +382,16 @@
                 const nowTime = getLocalTime();
                 let showModal = false;
                 
-                if (u.shift_end) {
-                    if (nowTime < u.shift_end) {
-                        // Before Shift End
+                // Get fresh user data from server if possible, or use local
+                const shiftEnd = u.shift_end;
+
+                if (shiftEnd) {
+                    if (nowTime < shiftEnd) {
+                        // Before Shift End - Only show if punching out EARLY
                         document.getElementById('modal-title').textContent = '⚠️ Early Checkout?';
                         document.getElementById('modal-desc').textContent = 'You are attempting to punch out before your scheduled shift end. Please provide a reason.';
                         document.getElementById('modal-reason-label').textContent = 'Reason for Early Departure';
                         showModal = true;
-                    } else {
-                        // Check if > 2 hours after shift end
-                        const [h, m] = u.shift_end.split(':').map(Number);
-                        const shiftEndMinutes = h * 60 + m;
-                        const [nowH, nowM] = nowTime.split(':').map(Number);
-                        const nowMinutes = nowH * 60 + nowM;
-                        
-                        if (nowMinutes > shiftEndMinutes + 120) {
-                            document.getElementById('modal-title').textContent = '⚠️ Late Checkout?';
-                            document.getElementById('modal-desc').textContent = 'You are punching out more than 2 hours after your shift end. Please provide a reason.';
-                            document.getElementById('modal-reason-label').textContent = 'Reason for Late Checkout';
-                            showModal = true;
-                        }
                     }
                 }
 
@@ -429,12 +419,22 @@
         }
 
         function closeAllModals() {
-            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+            document.querySelectorAll('.modal-overlay').forEach(m => {
+                m.classList.remove('open');
+            });
             isPunching = false;
         }
 
+        // Click outside to close
+        document.addEventListener('click', e => {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeAllModals();
+            }
+        });
+
         function toggleOtherReason(val) {
-            document.getElementById('other-reason-div').style.display = (val === 'Other') ? 'block' : 'none';
+            const div = document.getElementById('other-reason-div');
+            if (div) div.style.display = (val === 'Other') ? 'block' : 'none';
         }
 
         async function submitEarlyPunchOut() {
@@ -447,7 +447,9 @@
             }
 
             const btn = document.getElementById('btn-submit-early');
-            btn.disabled = true; btn.textContent = 'Processing...';
+            btn.disabled = true; 
+            const originalText = btn.textContent;
+            btn.textContent = 'Processing...';
 
             const sendPunch = async (lat = null, lng = null) => {
                 try {
@@ -464,7 +466,8 @@
                     toast(e.message, 'error'); 
                 } finally { 
                     btn.disabled = false; 
-                    btn.textContent = 'Submit & Punch Out'; 
+                    btn.textContent = originalText;
+                    isPunching = false;
                 }
             };
 
@@ -472,10 +475,10 @@
                 navigator.geolocation.getCurrentPosition(
                     pos => sendPunch(pos.coords.latitude, pos.coords.longitude),
                     err => {
-                        toast('Location access required', 'error');
-                        btn.disabled = false; btn.textContent = 'Submit & Punch Out';
+                        console.warn('Location error:', err);
+                        sendPunch(); // Fallback to punch without location if blocked
                     },
-                    { timeout: 10000 }
+                    { timeout: 5000 }
                 );
             } else {
                 sendPunch();
@@ -568,21 +571,25 @@
             };
             
             const photoFile = document.getElementById('p-photo-input').files[0];
-            if (photoFile) {
-                if (photoFile.size > 1024 * 1024) return toast('Photo too large! Max 1MB allowed.', 'error');
-                payload.photo = await toBase64(photoFile);
-            }
-
             const btn = document.querySelector('#profile-modal .btn-primary');
             const originalText = btn.textContent;
             btn.disabled = true; btn.textContent = 'Saving...';
 
             try {
+                if (photoFile) {
+                    if (photoFile.size > 2 * 1024 * 1024) throw new Error('Photo too large! Max 2MB allowed.');
+                    payload.photo = await uploadToCloudinary(photoFile);
+                }
+
                 await API.patch('/users/profile', payload);
                 toast('✅ Profile updated successfully', 'success');
                 location.reload(); 
-            } catch (e) { toast(e.message, 'error'); }
-            finally { btn.disabled = false; btn.textContent = originalText; }
+            } catch (e) { 
+                toast(e.message, 'error'); 
+            } finally { 
+                btn.disabled = false; 
+                btn.textContent = originalText; 
+            }
         }
 
         function toBase64(file) {

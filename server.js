@@ -21,6 +21,7 @@ app.use('/api/leave', require('./routes/leave'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/timetable', require('./routes/timetable'));
+app.use('/api/dashboard', require('./routes/dashboard'));
 
 // ─── Cron Jobs ────────────────────────────────────────────────────────────────
 require('./cron').initCron();
@@ -47,16 +48,54 @@ async function seedAdmin() {
 }
 seedAdmin();
 
+// ─── Stats Endpoint (Public counts) ──────────────────────────────────────────
+app.get('/api/stats/public', async (req, res) => {
+    try {
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+
+        const [
+            { count: total_teachers },
+            { count: total_students },
+            { count: total_workers },
+            { count: present_today },
+            { count: active_visitors }
+        ] = await Promise.all([
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'teacher').eq('status', 'active'),
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student').eq('status', 'active'),
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'worker').eq('status', 'active'),
+            supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('date', today).in('status', ['present', 'late']),
+            supabase.from('visitors').select('*', { count: 'exact', head: true }).eq('status', 'inside')
+        ]);
+
+        res.json({
+            total_members: (total_teachers || 0) + (total_students || 0) + (total_workers || 0),
+            present_today: present_today || 0,
+            active_visitors: active_visitors || 0
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/stats', authMiddleware, requireRole('admin'), async (req, res) => {
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
 
-        const { count: total_teachers } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'teacher').eq('status', 'active');
-        const { count: total_students } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student').eq('status', 'active');
-        const { count: total_workers } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'worker').eq('status', 'active');
-        const { count: present_today } = await supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('date', today).in('status', ['present', 'late']);
-        const { count: active_visitors } = await supabase.from('visitors').select('*', { count: 'exact', head: true }).eq('status', 'inside');
-        const { count: pending_leaves } = await supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+        const [
+            { count: total_teachers },
+            { count: total_students },
+            { count: total_workers },
+            { count: present_today },
+            { count: active_visitors },
+            { count: pending_leaves }
+        ] = await Promise.all([
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'teacher').eq('status', 'active'),
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student').eq('status', 'active'),
+            supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'worker').eq('status', 'active'),
+            supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('date', today).in('status', ['present', 'late']),
+            supabase.from('visitors').select('*', { count: 'exact', head: true }).eq('status', 'inside'),
+            supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+        ]);
 
         res.json({
             total_teachers: total_teachers || 0,

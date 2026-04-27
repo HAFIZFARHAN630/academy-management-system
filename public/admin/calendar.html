@@ -258,7 +258,7 @@
 
         function renderTimetable(data) {
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const todayIndex = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Karachi"})).getDay();
+            const todayIndex = new Date(new Date().toLocaleString("en-US", {timeZone: APP_CONFIG.timezone || "Asia/Karachi"})).getDay();
             const todayDay = days[todayIndex];
 
             ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(day => {

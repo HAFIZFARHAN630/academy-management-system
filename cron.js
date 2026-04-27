@@ -7,8 +7,8 @@ function initCron() {
     setInterval(async () => {
         try {
             const now = new Date();
-            const localTimeStr = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
-            const localToday = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+            const localTimeStr = now.toLocaleTimeString('en-GB', { timeZone: process.env.TIMEZONE || 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
+            const localToday = now.toLocaleDateString('en-CA', { timeZone: process.env.TIMEZONE || 'Asia/Karachi' });
             const nowSeconds = Math.floor(now.getTime() / 1000);
 
             // 1. Midnight Reset (Run at 00:00)

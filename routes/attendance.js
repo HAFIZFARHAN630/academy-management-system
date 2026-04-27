@@ -16,7 +16,7 @@ router.get('/live', requireRole('admin'), async (req, res) => {
 
   const send = async () => {
     try {
-      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: process.env.TIMEZONE || 'Asia/Karachi' });
       const data = await getLiveData(today);
       res.write(`data: ${JSON.stringify(data)}\n\n`);
     } catch (err) {
@@ -31,83 +31,97 @@ router.get('/live', requireRole('admin'), async (req, res) => {
 });
 
 async function getLiveData(date) {
-  // We use multiple select calls or a single RPC/Complex query. 
-  // For simplicity and matching current logic, we'll do separate calls.
-  
-  // Teachers
-  const { data: teachers } = await supabase
-    .from('users')
-    .select(`
-      id, full_name, login_id, photo,
-      attendance!left(punch_in, punch_out, status)
-    `)
-    .eq('role', 'teacher')
-    .eq('status', 'active')
-    .eq('attendance.date', date);
+  try {
+    const [
+      { data: teachers },
+      { data: students },
+      { data: workers },
+      { data: visitors }
+    ] = await Promise.all([
+      // Teachers
+      supabase
+        .from('users')
+        .select(`
+          id, full_name, login_id, photo,
+          attendance!user_id!left(punch_in, punch_out, status)
+        `)
+        .eq('role', 'teacher')
+        .eq('status', 'active')
+        .eq('attendance.date', date),
 
-  // Flatten the attendance data from the join
-  const processedTeachers = teachers?.map(u => ({
-    ...u,
-    punch_in: u.attendance?.[0]?.punch_in || null,
-    punch_out: u.attendance?.[0]?.punch_out || null,
-    status: u.attendance?.[0]?.status || null
-  })) || [];
+      // Students
+      supabase
+        .from('users')
+        .select(`
+          id, full_name, login_id, photo, class_name, section, roll_no,
+          attendance!user_id!left(punch_in, punch_out, status, is_manual)
+        `)
+        .eq('role', 'student')
+        .eq('status', 'active')
+        .eq('attendance.date', date),
 
-  // Students
-  const { data: students } = await supabase
-    .from('users')
-    .select(`
-      id, full_name, login_id, photo, class_name, section, roll_no,
-      attendance!left(punch_in, punch_out, status, is_manual)
-    `)
-    .eq('role', 'student')
-    .eq('status', 'active')
-    .eq('attendance.date', date);
+      // Workers
+      supabase
+        .from('users')
+        .select(`
+          id, full_name, login_id, photo, designation,
+          attendance!user_id!left(punch_in, punch_out, status)
+        `)
+        .eq('role', 'worker')
+        .eq('status', 'active')
+        .eq('attendance.date', date),
 
-  const processedStudents = students?.map(u => ({
-    ...u,
-    punch_in: u.attendance?.[0]?.punch_in || null,
-    punch_out: u.attendance?.[0]?.punch_out || null,
-    status: u.attendance?.[0]?.status || null,
-    is_manual: u.attendance?.[0]?.is_manual || null
-  })) || [];
+      // Visitors
+      supabase
+        .from('visitors')
+        .select('*, users!host_id(full_name)')
+        .eq('status', 'inside')
+        .order('check_in', { ascending: false })
+    ]);
 
-  // Workers
-  const { data: workers } = await supabase
-    .from('users')
-    .select(`
-      id, full_name, login_id, photo, designation,
-      attendance!left(punch_in, punch_out, status)
-    `)
-    .eq('role', 'worker')
-    .eq('status', 'active')
-    .eq('attendance.date', date);
+    const processedTeachers = teachers?.map(u => ({
+      ...u,
+      punch_in: u.attendance?.[0]?.punch_in || null,
+      punch_out: u.attendance?.[0]?.punch_out || null,
+      status: u.attendance?.[0]?.status || null
+    })) || [];
 
-  const processedWorkers = workers?.map(u => ({
-    ...u,
-    punch_in: u.attendance?.[0]?.punch_in || null,
-    punch_out: u.attendance?.[0]?.punch_out || null,
-    status: u.attendance?.[0]?.status || null
-  })) || [];
+    const processedStudents = students?.map(u => ({
+      ...u,
+      punch_in: u.attendance?.[0]?.punch_in || null,
+      punch_out: u.attendance?.[0]?.punch_out || null,
+      status: u.attendance?.[0]?.status || null,
+      is_manual: u.attendance?.[0]?.is_manual || null
+    })) || [];
 
-  // Visitors
-  const { data: visitors } = await supabase
-    .from('visitors')
-    .select('*, users(full_name)')
-    .eq('status', 'inside')
-    .order('check_in', { ascending: false });
+    const processedWorkers = workers?.map(u => ({
+      ...u,
+      punch_in: u.attendance?.[0]?.punch_in || null,
+      punch_out: u.attendance?.[0]?.punch_out || null,
+      status: u.attendance?.[0]?.status || null
+    })) || [];
 
-  const processedVisitors = visitors?.map(v => ({
-    ...v,
-    host_name: v.users?.full_name || null
-  })) || [];
+    const processedVisitors = visitors?.map(v => ({
+      ...v,
+      host_name: v.users?.full_name || null
+    })) || [];
 
-  return { teachers: processedTeachers, students: processedStudents, workers: processedWorkers, visitors: processedVisitors, timestamp: Date.now() };
+    return { 
+      teachers: processedTeachers, 
+      students: processedStudents, 
+      workers: processedWorkers, 
+      visitors: processedVisitors, 
+      timestamp: Date.now() 
+    };
+  } catch (err) {
+    console.error('Error in getLiveData:', err);
+    return { teachers: [], students: [], workers: [], visitors: [], error: err.message };
+  }
 }
 
 // Helper for local date/time
-const getToday = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
-const getNowTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
+const getToday = () => new Date().toLocaleDateString('en-CA', { timeZone: process.env.TIMEZONE || 'Asia/Karachi' });
+const getNowTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: process.env.TIMEZONE || 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
 
 // POST /api/attendance/punch — Punch In/Out
 router.post('/punch', async (req, res) => {
@@ -223,7 +237,7 @@ router.get('/daily-report', requireRole('admin'), async (req, res) => {
     .from('users')
     .select(`
       id, full_name, login_id, role, class_name,
-      attendance!left(punch_in, punch_out, status, is_manual, method)
+      attendance!user_id!left(punch_in, punch_out, status, is_manual, method)
     `)
     .neq('role', 'admin')
     .eq('status', 'active')

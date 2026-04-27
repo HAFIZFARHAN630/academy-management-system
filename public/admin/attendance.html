@@ -105,7 +105,7 @@
     </main>`;
 
         initAdminLayout('/admin/attendance.html');
-        document.getElementById('report-date').value = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+        document.getElementById('report-date').value = new Date().toLocaleDateString('en-CA', { timeZone: APP_CONFIG.timezone || 'Asia/Karachi' });
 
         let liveData = { teachers: [], students: [], workers: [], visitors: [] };
         let currentTab = 'teachers';

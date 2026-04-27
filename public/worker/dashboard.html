@@ -241,8 +241,8 @@
     <script src="/js/face-auth.js"></script>
     <script>
         if (!requireAuth(['worker'])) { }
-        const getLocalDate = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
-        const getLocalTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
+        const getLocalDate = () => new Date().toLocaleDateString('en-CA', { timeZone: APP_CONFIG.timezone || 'Asia/Karachi' });
+        const getLocalTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: APP_CONFIG.timezone || 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
 
         const u = getUser();
         document.getElementById('u-name').textContent = u.full_name?.split(' ')[0] || 'Worker';

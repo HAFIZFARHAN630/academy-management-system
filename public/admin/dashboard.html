@@ -316,9 +316,19 @@
             } catch (e) { }
         }
 
-        loadStats(); loadNotifications(); loadLiveFeed(); loadVisitors();
-        setInterval(() => { loadStats(); loadLiveFeed(); loadVisitors(); }, 30000);
-        setInterval(loadNotifications, 15000);
+        async function refreshDashboard() {
+            try {
+                await Promise.all([
+                    loadStats(),
+                    loadNotifications(),
+                    loadLiveFeed(),
+                    loadVisitors()
+                ]);
+            } catch (e) { console.error('Dashboard refresh failed:', e); }
+        }
+
+        refreshDashboard();
+        setInterval(refreshDashboard, 30000);
     </script>
 </body>
 

@@ -27,8 +27,22 @@
                                 class="form-control" id="f-phone" required></div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label class="form-label">CNIC</label><input class="form-control"
-                                id="f-cnic"></div>
+                        <div class="form-group"><label class="form-label">CNIC</label><input class="form-control" id="f-cnic"></div>
+                        <div class="form-group"><label class="form-label">Email</label><input class="form-control" id="f-email" type="email"></div>
+                    </div>
+                    <div class="form-group"><label class="form-label">Full Address</label><input class="form-control" id="f-address"></div>
+                    <div class="form-group"><label class="form-label">Emergency Contact Number</label><input class="form-control" id="f-emergency" placeholder="Name or Number"></div>
+                    <div class="form-group">
+                        <label class="form-label">Worker Photo</label>
+                        <div class="flex items-center gap-4">
+                            <div class="avatar-preview" id="f-photo-preview-container" style="width:60px; height:60px; border-radius:12px; background:var(--bg-700); overflow:hidden; border:1px solid var(--border-medium); display:flex; align-items:center; justify-content:center;">
+                                <span id="f-photo-preview-text" style="font-size:1.5rem;">👷</span>
+                                <img id="f-photo-preview" style="display:none; width:100%; height:100%; object-fit:cover;">
+                            </div>
+                            <input type="file" id="f-photo" hidden accept="image/*" onchange="previewImage(this, 'f-photo-preview')">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('f-photo').click()">📸 Choose Photo</button>
+                        </div>
+                    </div>
                         <div class="form-group"><label class="form-label">Designation</label>
                             <select class="form-control" id="f-designation">
                                 <option>Security Guard</option>
@@ -99,7 +113,7 @@
           <div class="table-header">
             <h3>👷 All Workers</h3>
             <div class="flex gap-3">
-              <div class="search-bar"><span>🔍</span><input type="text" id="search-input" placeholder="Search workers..." oninput="filterTable()"></div>
+              <div class="search-bar"><span>🔍</span><input type="text" id="search-input" placeholder="Search workers..." oninput="filterTable()" onkeydown="if(event.key==='Enter') filterTable()"></div>
               <button class="btn btn-primary" onclick="openAddModal()">➕ Add Worker</button>
             </div>
           </div>
@@ -122,7 +136,9 @@
             if (!workers.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">No workers found</td></tr>'; return; }
             tbody.innerHTML = workers.map(w => `<tr>
       <td><div class="flex items-center gap-3">
-        <div class="avatar" style="background:var(--color-worker);color:#111;">${avatarLetter(w.full_name)}</div>
+        <div class="avatar" style="background:var(--color-worker);color:#111;overflow:hidden;">
+            ${w.photo ? `<img src="${w.photo}" style="width:100%;height:100%;object-fit:cover;">` : avatarLetter(w.full_name)}
+        </div>
         <div><div class="font-semibold">${w.full_name}</div><div class="text-xs text-muted">${w.login_id}</div></div>
       </div></td>
       <td><span class="badge badge-purple">${w.designation || '—'}</span></td>
@@ -138,24 +154,107 @@
       </div></td>
     </tr>`).join('');
         }
-        function filterTable() { const q = document.getElementById('search-input').value.toLowerCase(); render(all.filter(w => w.full_name.toLowerCase().includes(q) || (w.designation || '').toLowerCase().includes(q))); }
-        function openAddModal() { editId = null; document.getElementById('worker-form').reset(); document.getElementById('modal-title').textContent = 'Add New Worker'; document.getElementById('save-btn').textContent = 'Add Worker'; document.getElementById('f-status-grp').style.display = 'none'; document.getElementById('modal-overlay').classList.add('open'); }
+        function filterTable() { const q = document.getElementById('search-input').value.toLowerCase(); render(all.filter(w => w.full_name.toLowerCase().includes(q) || (w.designation || '').toLowerCase().includes(q) || (w.login_id || '').toLowerCase().includes(q))); }
+        function openAddModal() { 
+            editId = null; 
+            document.getElementById('worker-form').reset(); 
+            document.getElementById('f-photo-preview').style.display = 'none';
+            document.getElementById('f-photo-preview-text').style.display = 'block';
+            document.getElementById('modal-title').textContent = 'Add New Worker'; 
+            document.getElementById('save-btn').textContent = 'Add Worker'; 
+            document.getElementById('f-status-grp').style.display = 'none'; 
+            document.getElementById('modal-overlay').classList.add('open'); 
+        }
         function openEditModal(id) {
             const w = all.find(x => x.id === id); if (!w) return; editId = id;
             document.getElementById('modal-title').textContent = 'Edit Worker'; document.getElementById('save-btn').textContent = 'Save Changes';
-            document.getElementById('f-name').value = w.full_name; document.getElementById('f-phone').value = w.phone || ''; document.getElementById('f-cnic').value = w.cnic || '';
-            document.getElementById('f-designation').value = w.designation || 'Security Guard'; document.getElementById('f-shift-start').value = w.shift_start || ''; document.getElementById('f-shift-end').value = w.shift_end || ''; document.getElementById('f-hourly').value = w.hourly_rate || ''; document.getElementById('f-status').value = w.status || 'active'; document.getElementById('f-status-grp').style.display = 'block';
+            document.getElementById('f-name').value = w.full_name; 
+            document.getElementById('f-phone').value = w.phone || ''; 
+            document.getElementById('f-cnic').value = w.cnic || '';
+            document.getElementById('f-email').value = w.email || '';
+            document.getElementById('f-address').value = w.address || '';
+            document.getElementById('f-emergency').value = w.emergency_contact || '';
+            document.getElementById('f-designation').value = w.designation || 'Security Guard'; 
+            document.getElementById('f-shift-start').value = w.shift_start || ''; 
+            document.getElementById('f-shift-end').value = w.shift_end || ''; 
+            document.getElementById('f-hourly').value = w.hourly_rate || ''; 
+            document.getElementById('f-status').value = w.status || 'active'; 
+            document.getElementById('f-status-grp').style.display = 'block';
+            
+            const preview = document.getElementById('f-photo-preview');
+            const previewText = document.getElementById('f-photo-preview-text');
+            if (w.photo) {
+                preview.src = w.photo;
+                preview.style.display = 'block';
+                previewText.style.display = 'none';
+            } else {
+                preview.style.display = 'none';
+                previewText.style.display = 'block';
+            }
+            
             document.getElementById('modal-overlay').classList.add('open');
         }
         function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+        function previewImage(input, previewId) {
+            const preview = document.getElementById(previewId);
+            const previewText = document.getElementById(previewId + '-text');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    if (previewText) previewText.style.display = 'none';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         async function saveWorker(e) {
-            e.preventDefault(); const btn = document.getElementById('save-btn'); btn.disabled = true; btn.textContent = 'Saving...';
-            const p = { full_name: document.getElementById('f-name').value, phone: document.getElementById('f-phone').value, cnic: document.getElementById('f-cnic').value, designation: document.getElementById('f-designation').value, shift_start: document.getElementById('f-shift-start').value, shift_end: document.getElementById('f-shift-end').value, hourly_rate: parseFloat(document.getElementById('f-hourly').value) || null, status: document.getElementById('f-status').value };
+            e.preventDefault(); 
+            const btn = document.getElementById('save-btn'); 
+            btn.disabled = true; btn.textContent = 'Saving...';
+            
+            const p = { 
+                full_name: document.getElementById('f-name').value, 
+                phone: document.getElementById('f-phone').value, 
+                cnic: document.getElementById('f-cnic').value, 
+                email: document.getElementById('f-email').value,
+                address: document.getElementById('f-address').value,
+                emergency_contact: document.getElementById('f-emergency').value,
+                designation: document.getElementById('f-designation').value, 
+                shift_start: document.getElementById('f-shift-start').value, 
+                shift_end: document.getElementById('f-shift-end').value, 
+                hourly_rate: parseFloat(document.getElementById('f-hourly').value) || null, 
+                status: document.getElementById('f-status').value 
+            };
+
+            const photoFile = document.getElementById('f-photo').files[0];
+            
             try {
-                if (editId) { await API.put(`/users/workers/${editId}`, p); toast('Worker updated', 'success'); closeModal(); loadWorkers(); }
-                else { const r = await API.post('/users/workers', p); closeModal(); document.getElementById('c-login-id').textContent = r.login_id; document.getElementById('c-temp-pwd').textContent = r.temp_password; document.getElementById('c-name').textContent = r.full_name; document.getElementById('cred-modal').classList.add('open'); loadWorkers(); }
-            } catch (err) { toast(err.message, 'error'); }
-            finally { btn.disabled = false; btn.textContent = editId ? 'Save Changes' : 'Add Worker'; }
+                if (photoFile) {
+                    if (photoFile.size > 2 * 1024 * 1024) throw new Error('Photo too large! Max 2MB allowed.');
+                    p.photo = await uploadToCloudinary(photoFile);
+                }
+
+                if (editId) { 
+                    await API.put(`/users/workers/${editId}`, p); 
+                    toast('Worker updated', 'success'); 
+                    closeModal(); 
+                    loadWorkers(); 
+                } else { 
+                    const r = await API.post('/users/workers', p); 
+                    closeModal(); 
+                    document.getElementById('c-login-id').textContent = r.login_id; 
+                    document.getElementById('c-temp-pwd').textContent = r.temp_password; 
+                    document.getElementById('c-name').textContent = r.full_name; 
+                    document.getElementById('cred-modal').classList.add('open'); 
+                    loadWorkers(); 
+                }
+            } catch (err) { 
+                toast(err.message, 'error'); 
+            } finally { 
+                btn.disabled = false; btn.textContent = editId ? 'Save Changes' : 'Add Worker'; 
+            }
         }
         async function deactivate(id, name, event) { 
             if (event) { event.preventDefault(); event.stopPropagation(); }

@@ -492,10 +492,18 @@
       }, 40);
     }
 
-    // ── No auth needed for public stats—skip for now, just show placeholders ──
-    document.getElementById('stat-total').textContent = '∞';
-    document.getElementById('stat-today').textContent = '—';
-    document.getElementById('stat-visitors').textContent = '—';
+    // ── Fetch real public stats ──
+    async function loadPublicStats() {
+      try {
+        const d = await API.get('/stats/public');
+        animateCount(document.getElementById('stat-total'), d.total_members || 0);
+        animateCount(document.getElementById('stat-today'), d.present_today || 0);
+        animateCount(document.getElementById('stat-visitors'), d.active_visitors || 0);
+      } catch (e) {
+        console.warn('Public stats failed:', e.message);
+      }
+    }
+    loadPublicStats();
   </script>
 </body>
 

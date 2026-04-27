@@ -22,23 +22,21 @@
             <form id="teacher-form" onsubmit="saveTeacher(event)">
                 <div class="modal-body">
                     <div class="form-row">
-                        <div class="form-group"><label class="form-label">Full Name <span
-                                    class="req">*</span></label><input class="form-control" id="f-name"
-                                placeholder="e.g. Ahmad Ali" required></div>
-                        <div class="form-group"><label class="form-label">Phone <span class="req">*</span> <small class="text-muted" id="phone-prefix-hint"></small></label><input
-                                class="form-control" id="f-phone" placeholder="03xx-xxxxxxx" required></div>
+                        <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input class="form-control" id="f-name" placeholder="e.g. Ahmad Ali" required></div>
+                        <div class="form-group"><label class="form-label">Email</label><input class="form-control" id="f-email" type="email" placeholder="e.g. teacher@example.com"></div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label class="form-label">CNIC</label><input class="form-control"
-                                id="f-cnic" placeholder="00000-0000000-0"></div>
-                        <div class="form-group"><label class="form-label">Subject(s)</label><input class="form-control"
-                                id="f-subject" placeholder="e.g. Mathematics, Physics"></div>
+                        <div class="form-group"><label class="form-label">Phone <span class="req">*</span> <small class="text-muted" id="phone-prefix-hint"></small></label><input class="form-control" id="f-phone" placeholder="03xx-xxxxxxx" required></div>
+                        <div class="form-group"><label class="form-label">Emergency Contact</label><input class="form-control" id="f-emergency" placeholder="03xx-xxxxxxx"></div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label class="form-label">Qualification</label><input
-                                class="form-control" id="f-qual" placeholder="e.g. M.Sc. Mathematics"></div>
-                        <div class="form-group"><label class="form-label">Joining Date</label><input
-                                class="form-control" id="f-joining" type="date"></div>
+                        <div class="form-group"><label class="form-label">CNIC</label><input class="form-control" id="f-cnic" placeholder="00000-0000000-0"></div>
+                        <div class="form-group"><label class="form-label">Subject(s)</label><input class="form-control" id="f-subject" placeholder="e.g. Mathematics, Physics"></div>
+                    </div>
+                    <div class="form-group"><label class="form-label">Full Address</label><textarea class="form-control" id="f-address" rows="2" placeholder="Teacher's residential address..."></textarea></div>
+                    <div class="form-row">
+                        <div class="form-group"><label class="form-label">Qualification</label><input class="form-control" id="f-qual" placeholder="e.g. M.Sc. Mathematics"></div>
+                        <div class="form-group"><label class="form-label">Joining Date</label><input class="form-control" id="f-joining" type="date"></div>
                     </div>
                     <div class="form-row">
                         <div class="form-group"><label class="form-label">Salary Type</label>
@@ -47,17 +45,25 @@
                                 <option value="hourly">Hourly Rate</option>
                             </select>
                         </div>
-                        <div class="form-group" id="salary-fixed-grp"><label class="form-label">Base Salary</label><input class="form-control" id="f-base-salary" type="number"
-                                placeholder="e.g. 35000"></div>
+                        <div class="form-group" id="salary-fixed-grp"><label class="form-label">Base Salary</label><input class="form-control" id="f-base-salary" type="number" placeholder="e.g. 35000"></div>
+                        <div class="form-group hidden" id="salary-hourly-grp"><label class="form-label">Hourly Rate</label><input class="form-control" id="f-hourly" type="number" placeholder="e.g. 250"></div>
                     </div>
-                    <div class="form-group hidden" id="salary-hourly-grp"><label class="form-label">Hourly Rate</label><input class="form-control" id="f-hourly" type="number" placeholder="e.g. 250">
-                    </div>
-                    <div class="form-group" id="f-status-grp" style="display:none;">
-                        <label class="form-label">Status</label>
-                        <select class="form-control" id="f-status">
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Teacher Photo</label>
+                            <input type="file" class="form-control" id="f-photo" accept="image/*" onchange="previewImage(this, 'photo-preview')">
+                            <div id="photo-preview-container" class="mt-2" style="display:none;">
+                                <img id="photo-preview" src="" style="width:100px;height:100px;object-fit:cover;border-radius:var(--radius-md);">
+                            </div>
+                            <input type="hidden" id="f-photo-url">
+                        </div>
+                        <div class="form-group" id="f-status-grp" style="display:none;">
+                            <label class="form-label">Status</label>
+                            <select class="form-control" id="f-status">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -114,7 +120,7 @@
           <div class="table-header">
             <h3>👨‍🏫 All Teachers</h3>
             <div class="flex items-center gap-3">
-              <div class="search-bar"><span>🔍</span><input type="text" id="search-input" placeholder="Search teachers..." oninput="filterTable()"></div>
+              <div class="search-bar"><span>🔍</span><input type="text" id="search-input" placeholder="Search teachers..." oninput="filterTable()" onkeydown="if(event.key==='Enter') filterTable()"></div>
               <select class="form-control" style="width:150px;padding:8px 12px;" id="status-filter" onchange="filterTable()">
                 <option value="">All Status</option>
                 <option value="active">Active</option>
@@ -154,7 +160,9 @@
       <tr>
         <td>
           <div class="flex items-center gap-3">
-            <div class="avatar" style="background:var(--color-primary);color:#fff;">${avatarLetter(t.full_name)}</div>
+            <div class="avatar" style="background:var(--color-primary);color:#fff;overflow:hidden;">
+                ${t.photo ? `<img src="${t.photo}" style="width:100%;height:100%;object-fit:cover;">` : avatarLetter(t.full_name)}
+            </div>
             <div>
               <div class="font-semibold">${t.full_name}</div>
               <div class="text-xs text-muted">${t.login_id}</div>
@@ -193,12 +201,27 @@
             document.getElementById('salary-hourly-grp').classList.toggle('hidden', type !== 'hourly');
         }
 
+        function previewImage(input, previewId) {
+            const container = document.getElementById(previewId + '-container');
+            const preview = document.getElementById(previewId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    container.style.display = 'block';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         function openAddModal() {
             editingId = null;
             document.getElementById('teacher-form').reset();
             document.getElementById('modal-title').textContent = 'Add New Teacher';
             document.getElementById('save-btn').textContent = 'Add Teacher';
             document.getElementById('f-status-grp').style.display = 'none';
+            document.getElementById('photo-preview-container').style.display = 'none';
+            document.getElementById('f-photo-url').value = '';
             toggleSalaryFields();
             document.getElementById('modal-overlay').classList.add('open');
         }
@@ -210,8 +233,11 @@
             document.getElementById('modal-title').textContent = 'Edit Teacher';
             document.getElementById('save-btn').textContent = 'Save Changes';
             document.getElementById('f-name').value = t.full_name;
+            document.getElementById('f-email').value = t.email || '';
             document.getElementById('f-phone').value = t.phone || '';
             document.getElementById('f-cnic').value = t.cnic || '';
+            document.getElementById('f-address').value = t.address || '';
+            document.getElementById('f-emergency').value = t.emergency_contact || '';
             document.getElementById('f-subject').value = t.subject || '';
             document.getElementById('f-qual').value = t.qualification || '';
             document.getElementById('f-joining').value = t.joining_date || '';
@@ -220,6 +246,13 @@
             document.getElementById('f-hourly').value = t.hourly_rate || '';
             document.getElementById('f-status').value = t.status || 'active';
             document.getElementById('f-status-grp').style.display = 'block';
+            document.getElementById('f-photo-url').value = t.photo || '';
+            if (t.photo) {
+                document.getElementById('photo-preview').src = t.photo;
+                document.getElementById('photo-preview-container').style.display = 'block';
+            } else {
+                document.getElementById('photo-preview-container').style.display = 'none';
+            }
             toggleSalaryFields();
             document.getElementById('modal-overlay').classList.add('open');
         }
@@ -230,19 +263,32 @@
             e.preventDefault();
             const btn = document.getElementById('save-btn');
             btn.disabled = true; btn.textContent = 'Saving...';
-            const payload = {
-                full_name: document.getElementById('f-name').value,
-                phone: document.getElementById('f-phone').value,
-                cnic: document.getElementById('f-cnic').value,
-                subject: document.getElementById('f-subject').value,
-                qualification: document.getElementById('f-qual').value,
-                joining_date: document.getElementById('f-joining').value,
-                salary_type: document.getElementById('f-salary-type').value,
-                base_salary: parseFloat(document.getElementById('f-base-salary').value) || null,
-                hourly_rate: parseFloat(document.getElementById('f-hourly').value) || null,
-                status: document.getElementById('f-status').value,
-            };
+            
             try {
+                let photoUrl = document.getElementById('f-photo-url').value;
+                const photoFile = document.getElementById('f-photo').files[0];
+                if (photoFile) {
+                    btn.textContent = 'Uploading Photo...';
+                    photoUrl = await uploadToCloudinary(photoFile);
+                }
+
+                const payload = {
+                    full_name: document.getElementById('f-name').value,
+                    email: document.getElementById('f-email').value,
+                    phone: document.getElementById('f-phone').value,
+                    cnic: document.getElementById('f-cnic').value,
+                    address: document.getElementById('f-address').value,
+                    emergency_contact: document.getElementById('f-emergency').value,
+                    subject: document.getElementById('f-subject').value,
+                    qualification: document.getElementById('f-qual').value,
+                    joining_date: document.getElementById('f-joining').value,
+                    salary_type: document.getElementById('f-salary-type').value,
+                    base_salary: parseFloat(document.getElementById('f-base-salary').value) || null,
+                    hourly_rate: parseFloat(document.getElementById('f-hourly').value) || null,
+                    status: document.getElementById('f-status').value,
+                    photo: photoUrl
+                };
+
                 if (editingId) {
                     await API.put(`/users/teachers/${editingId}`, payload);
                     toast('Teacher updated successfully', 'success');

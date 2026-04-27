@@ -3,7 +3,33 @@ const bcrypt = require('bcryptjs');
 const supabase = require('../database/supabase');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require('multer');
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: process.env.CLOUDINARY_FOLDER || 'academy',
+        allowed_formats: ['jpg', 'png', 'jpeg'],
+        transformation: [{ width: 500, height: 500, crop: 'limit' }]
+    }
+});
+
+const upload = multer({ storage: storage });
+
 router.use(authMiddleware);
+
+router.post('/upload', upload.single('file'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    res.json({ url: req.file.path });
+});
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -37,7 +63,7 @@ router.get('/profile', async (req, res) => {
 });
 
 router.patch('/profile', async (req, res) => {
-    const { full_name, phone, address, emergency_contact, preferred_language, photo } = req.body;
+    const { full_name, phone, address, emergency_contact, preferred_language, photo, parent_name, parent_phone } = req.body;
     const { error } = await supabase
         .from('users')
         .update({
@@ -46,7 +72,9 @@ router.patch('/profile', async (req, res) => {
             address,
             emergency_contact,
             preferred_language,
-            photo
+            photo,
+            parent_name,
+            parent_phone
         })
         .eq('id', req.user.id);
     
@@ -146,7 +174,7 @@ router.delete('/:id', requireRole('admin'), async (req, res) => {
 router.get('/teachers', requireRole('admin'), async (req, res) => {
     const { data: teachers, error } = await supabase
         .from('users')
-        .select('id,login_id,full_name,phone,cnic,subject,qualification,joining_date,base_salary,salary_type,status,last_login,photo,is_face_enrolled')
+        .select('id,login_id,full_name,email,phone,cnic,address,emergency_contact,subject,qualification,joining_date,base_salary,salary_type,status,last_login,photo,is_face_enrolled')
         .eq('role', 'teacher')
         .order('full_name');
     
@@ -155,7 +183,7 @@ router.get('/teachers', requireRole('admin'), async (req, res) => {
 });
 
 router.post('/teachers', requireRole('admin'), async (req, res) => {
-    const { full_name, cnic, phone, subject, qualification, joining_date, salary_type, base_salary, hourly_rate } = req.body;
+    const { full_name, email, cnic, phone, address, emergency_contact, subject, qualification, joining_date, salary_type, base_salary, hourly_rate, photo } = req.body;
     if (!full_name || !phone) return res.status(400).json({ error: 'Name and phone required' });
     
     const login_id = await generateLoginId('teacher');
@@ -167,8 +195,11 @@ router.post('/teachers', requireRole('admin'), async (req, res) => {
         .insert({
             login_id,
             full_name,
+            email,
             cnic,
             phone,
+            address,
+            emergency_contact,
             role: 'teacher',
             password: hash,
             temp_password: 1,
@@ -177,7 +208,8 @@ router.post('/teachers', requireRole('admin'), async (req, res) => {
             joining_date,
             salary_type,
             base_salary,
-            hourly_rate
+            hourly_rate,
+            photo
         })
         .select()
         .single();
@@ -198,20 +230,24 @@ router.post('/teachers', requireRole('admin'), async (req, res) => {
 });
 
 router.put('/teachers/:id', requireRole('admin'), async (req, res) => {
-    const { full_name, cnic, phone, subject, qualification, joining_date, salary_type, base_salary, hourly_rate, status } = req.body;
+    const { full_name, email, cnic, phone, address, emergency_contact, subject, qualification, joining_date, salary_type, base_salary, hourly_rate, status, photo } = req.body;
     const { error } = await supabase
         .from('users')
         .update({
             full_name,
+            email,
             cnic,
             phone,
+            address,
+            emergency_contact,
             subject,
             qualification,
             joining_date,
             salary_type,
             base_salary,
             hourly_rate,
-            status
+            status,
+            photo
         })
         .eq('id', req.params.id)
         .eq('role', 'teacher');
@@ -237,7 +273,7 @@ router.get('/students', requireRole('admin', 'teacher'), async (req, res) => {
     const { class_name, section } = req.query;
     let query = supabase
         .from('users')
-        .select('id,login_id,full_name,phone,roll_no,class_name,section,parent_name,parent_phone,status,photo,is_face_enrolled')
+        .select('id,login_id,full_name,email,phone,address,emergency_contact,roll_no,class_name,section,parent_name,parent_phone,status,photo,is_face_enrolled')
         .eq('role', 'student');
     
     if (class_name) query = query.eq('class_name', class_name);
@@ -250,7 +286,7 @@ router.get('/students', requireRole('admin', 'teacher'), async (req, res) => {
 });
 
 router.post('/students', requireRole('admin'), async (req, res) => {
-    const { full_name, cnic, phone, roll_no, class_name, section, parent_name, parent_phone, medical_notes } = req.body;
+    const { full_name, email, cnic, phone, address, emergency_contact, roll_no, class_name, section, parent_name, parent_phone, medical_notes, photo } = req.body;
     if (!full_name || !class_name) return res.status(400).json({ error: 'Name and class required' });
     
     const login_id = await generateLoginId('student');
@@ -262,8 +298,11 @@ router.post('/students', requireRole('admin'), async (req, res) => {
         .insert({
             login_id,
             full_name,
+            email,
             cnic,
             phone,
+            address,
+            emergency_contact,
             role: 'student',
             password: hash,
             temp_password: 1,
@@ -272,7 +311,8 @@ router.post('/students', requireRole('admin'), async (req, res) => {
             section,
             parent_name,
             parent_phone,
-            medical_notes
+            medical_notes,
+            photo
         })
         .select()
         .single();
@@ -282,20 +322,24 @@ router.post('/students', requireRole('admin'), async (req, res) => {
 });
 
 router.put('/students/:id', requireRole('admin'), async (req, res) => {
-    const { full_name, cnic, phone, roll_no, class_name, section, parent_name, parent_phone, medical_notes, status } = req.body;
+    const { full_name, email, cnic, phone, address, emergency_contact, roll_no, class_name, section, parent_name, parent_phone, medical_notes, status, photo } = req.body;
     const { error } = await supabase
         .from('users')
         .update({
             full_name,
+            email,
             cnic,
             phone,
+            address,
+            emergency_contact,
             roll_no,
             class_name,
             section,
             parent_name,
             parent_phone,
             medical_notes,
-            status
+            status,
+            photo
         })
         .eq('id', req.params.id)
         .eq('role', 'student');
@@ -309,7 +353,7 @@ router.put('/students/:id', requireRole('admin'), async (req, res) => {
 router.get('/workers', requireRole('admin'), async (req, res) => {
     const { data: workers, error } = await supabase
         .from('users')
-        .select('id,login_id,full_name,phone,cnic,designation,shift_start,shift_end,hourly_rate,status,photo,is_face_enrolled')
+        .select('id,login_id,full_name,email,phone,cnic,address,emergency_contact,designation,shift_start,shift_end,hourly_rate,status,photo,is_face_enrolled')
         .eq('role', 'worker')
         .order('full_name');
     
@@ -318,7 +362,7 @@ router.get('/workers', requireRole('admin'), async (req, res) => {
 });
 
 router.post('/workers', requireRole('admin'), async (req, res) => {
-    const { full_name, cnic, phone, designation, shift_start, shift_end, hourly_rate } = req.body;
+    const { full_name, email, cnic, phone, address, emergency_contact, designation, shift_start, shift_end, hourly_rate, photo } = req.body;
     if (!full_name || !phone) return res.status(400).json({ error: 'Name and phone required' });
     
     const login_id = await generateLoginId('worker');
@@ -330,8 +374,11 @@ router.post('/workers', requireRole('admin'), async (req, res) => {
         .insert({
             login_id,
             full_name,
+            email,
             cnic,
             phone,
+            address,
+            emergency_contact,
             role: 'worker',
             password: hash,
             temp_password: 1,
@@ -339,7 +386,8 @@ router.post('/workers', requireRole('admin'), async (req, res) => {
             shift_start,
             shift_end,
             hourly_rate,
-            salary_type: 'hourly'
+            salary_type: 'hourly',
+            photo
         })
         .select()
         .single();
@@ -349,18 +397,22 @@ router.post('/workers', requireRole('admin'), async (req, res) => {
 });
 
 router.put('/workers/:id', requireRole('admin'), async (req, res) => {
-    const { full_name, cnic, phone, designation, shift_start, shift_end, hourly_rate, status } = req.body;
+    const { full_name, email, cnic, phone, address, emergency_contact, designation, shift_start, shift_end, hourly_rate, status, photo } = req.body;
     const { error } = await supabase
         .from('users')
         .update({
             full_name,
+            email,
             cnic,
             phone,
+            address,
+            emergency_contact,
             designation,
             shift_start,
             shift_end,
             hourly_rate,
-            status
+            status,
+            photo
         })
         .eq('id', req.params.id)
         .eq('role', 'worker');

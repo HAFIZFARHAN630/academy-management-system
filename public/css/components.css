@@ -808,17 +808,20 @@ select.form-control option {
     justify-content: center;
     padding: var(--space-6);
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
     transition: var(--transition-fast);
 }
 
 .modal-overlay.open {
     opacity: 1;
-    pointer-events: none; /* Allow clicks through to the background */
+    visibility: visible;
+    pointer-events: auto; /* Enable clicks on the overlay (backdrop) */
+    background: rgba(0, 0, 0, 0.6); /* Semi-transparent backdrop */
+    backdrop-filter: blur(4px);
 }
 
 .modal {
-    pointer-events: auto; /* Re-enable clicks for the modal itself */
     background: var(--bg-600);
     border: 1px solid var(--border-medium);
     border-radius: var(--radius-2xl);
@@ -828,7 +831,7 @@ select.form-control option {
     overflow-y: auto;
     transform: scale(0.95) translateY(10px);
     transition: var(--transition-normal);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5); /* Stronger shadow since background is transparent */
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
 }
 
 .modal-overlay.open .modal {
