@@ -9,8 +9,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
-
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
@@ -40,9 +38,9 @@ app.get('/api/stats', authMiddleware, requireRole('admin'), (req, res) => {
     res.json({ total_teachers, total_students, total_workers, present_today, active_visitors, pending_leaves });
 });
 
-// ─── SPA Fallback ─────────────────────────────────────────────────────────────
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// ─── Base Route (Health Check) ────────────────────────────────────────────────
+app.get('/', (req, res) => {
+    res.json({ status: 'ok', message: 'Academy API Server is running' });
 });
 
 app.listen(PORT, () => {
