@@ -377,67 +377,43 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-sm"></span>';
 
-            // Shift Reason Logic
-            if (type === 'out') {
-                const nowTime = getLocalTime();
-                let showModal = false;
+            try {
+                const settings = await API.get('/settings');
+                const nowStr = getNowTime();
                 
-                // Get fresh user data from server if possible, or use local
-                const shiftEnd = u.shift_end;
-
-                if (shiftEnd) {
-                    if (nowTime < shiftEnd) {
-                        // Before Shift End - Only show if punching out EARLY
-                        document.getElementById('modal-title').textContent = '⚠️ Early Checkout?';
-                        document.getElementById('modal-desc').textContent = 'You are attempting to punch out before your scheduled shift end. Please provide a reason.';
-                        document.getElementById('modal-reason-label').textContent = 'Reason for Early Departure';
-                        showModal = true;
+                let isOutside = false;
+                const shiftTime = type === 'in' ? settings.shift_start : settings.shift_end;
+                
+                if (shiftTime) {
+                    const [sH, sM] = shiftTime.split(':').map(Number);
+                    const shiftMinutes = sH * 60 + sM;
+                    const [nH, nM] = nowStr.split(':').map(Number);
+                    const nowMinutes = nH * 60 + nM;
+                    const grace = parseInt(settings.grace_period || 15);
+                    
+                    if (Math.abs(nowMinutes - shiftMinutes) > grace) {
+                        isOutside = true;
                     }
                 }
 
-                if (showModal) {
+                if (isOutside && settings.require_reason) {
+                    document.getElementById('modal-title').textContent = type === 'in' ? '⚠️ Late Punch In' : '⚠️ Shift Window Alert';
+                    document.getElementById('modal-desc').textContent = `You are punching ${type.toUpperCase()} outside the allowed window (${shiftTime}). Please provide a reason.`;
                     document.getElementById('early-leave-modal').classList.add('open');
-                    btn.disabled = false;
-                    btn.innerHTML = originalContent;
-                    isPunching = false;
-                    return;
+                    document.getElementById('btn-submit-early').onclick = () => submitPunchWithReason(type, isOutside);
+                    btn.disabled = false; btn.innerHTML = originalContent;
+                    return; 
                 }
-            }
 
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    pos => executePunch(type, pos.coords.latitude, pos.coords.longitude, btn, originalContent),
-                    err => {
-                        toast('Location access required for punch', 'error');
-                        btn.disabled = false; btn.innerHTML = originalContent;
-                        isPunching = false;
-                    }
-                );
-            } else {
-                executePunch(type, null, null, btn, originalContent);
+                captureLocationAndPunch(type, isOutside);
+            } catch (e) {
+                toast(e.message, 'error');
+                btn.disabled = false; btn.innerHTML = originalContent;
+                isPunching = false;
             }
         }
 
-        function closeAllModals() {
-            document.querySelectorAll('.modal-overlay').forEach(m => {
-                m.classList.remove('open');
-            });
-            isPunching = false;
-        }
-
-        // Click outside to close
-        document.addEventListener('click', e => {
-            if (e.target.classList.contains('modal-overlay')) {
-                closeAllModals();
-            }
-        });
-
-        function toggleOtherReason(val) {
-            const div = document.getElementById('other-reason-div');
-            if (div) div.style.display = (val === 'Other') ? 'block' : 'none';
-        }
-
-        async function submitEarlyPunchOut() {
+        async function submitPunchWithReason(type, isOutside) {
             const select = document.getElementById('early-reason-select');
             const text = document.getElementById('early-reason-text');
             const reason = select.value === 'Other' ? text.value : select.value;
@@ -451,54 +427,61 @@
             const originalText = btn.textContent;
             btn.textContent = 'Processing...';
 
-            const sendPunch = async (lat = null, lng = null) => {
+            try {
+                await captureLocationAndPunch(type, isOutside, reason);
+            } finally {
+                btn.disabled = false; 
+                btn.textContent = originalText;
+            }
+        }
+
+        async function captureLocationAndPunch(type, isOutside, reason = null) {
+            const btn = type === 'in' ? document.getElementById('btn-punch-in') : document.getElementById('btn-punch-out');
+            const originalContent = btn ? btn.innerHTML : '';
+            
+            const performPunch = async (lat = null, lng = null) => {
                 try {
-                    await API.post('/attendance/punch', { 
-                        type: 'out', 
-                        lat: lat, 
-                        lng: lng,
-                        reason: reason
+                    const res = await API.post('/attendance/punch', { 
+                        type, lat, lng, reason, outside_window: isOutside 
                     });
-                    toast('✅ Early punch out recorded', 'success');
+                    toast(`✅ Punched ${type} successfully`, 'success');
                     closeAllModals();
                     await loadDashboard();
-                } catch (e) { 
-                    toast(e.message, 'error'); 
-                } finally { 
-                    btn.disabled = false; 
-                    btn.textContent = originalText;
+                } catch (e) {
+                    toast(e.message, 'error');
+                } finally {
+                    if (btn) { btn.disabled = false; btn.innerHTML = originalContent; }
                     isPunching = false;
                 }
             };
 
-            if (navigator.geolocation) {
+            const settings = await API.get('/settings');
+            if (settings.track_location && navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    pos => sendPunch(pos.coords.latitude, pos.coords.longitude),
+                    pos => performPunch(pos.coords.latitude, pos.coords.longitude),
                     err => {
                         console.warn('Location error:', err);
-                        sendPunch(); // Fallback to punch without location if blocked
+                        performPunch(); 
                     },
-                    { timeout: 5000 }
+                    { timeout: 6000 }
                 );
             } else {
-                sendPunch();
+                await performPunch();
             }
         }
 
-        async function executePunch(type, lat, lng, btn, originalContent) {
-            try {
-                const res = await API.post('/attendance/punch', { type, lat, lng });
-                toast(`✅ Punched ${type} at ${formatTime(res.timestamp)}`, 'success');
-                await loadDashboard();
-            } catch (e) { 
-                toast(e.message, 'error');
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = originalContent;
-                }
-            } finally {
-                isPunching = false;
-            }
+        function closeAllModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+            isPunching = false;
+        }
+
+        document.addEventListener('click', e => {
+            if (e.target.classList.contains('modal-overlay')) closeAllModals();
+        });
+
+        function toggleOtherReason(val) {
+            const div = document.getElementById('other-reason-div');
+            if (div) div.style.display = (val === 'Other') ? 'block' : 'none';
         }
 
         function openLeaveModal() { 

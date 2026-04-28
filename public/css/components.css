@@ -336,6 +336,12 @@
     outline: none;
 }
 
+input[type="file"].form-control {
+    padding: 8px 14px;
+    line-height: 1;
+    height: auto;
+}
+
 .form-control:focus {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--color-primary-glow);
@@ -832,6 +838,7 @@ select.form-control option {
     transform: scale(0.95) translateY(10px);
     transition: var(--transition-normal);
     box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    pointer-events: auto;
 }
 
 .modal-overlay.open .modal {

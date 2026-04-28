@@ -273,23 +273,24 @@
           <div class="settings-card">
             <h4>⏰ Attendance Policy</h4>
             <div class="settings-row">
-              <div><div class="label">Late Threshold (minutes)</div><div class="hint">After how many minutes = late</div></div>
-              <input class="form-control" style="width:80px;" type="number" value="15" min="5">
+              <div><div class="label">Require Reason for Early/Late Punch</div><div class="hint">Show modal if outside shift window</div></div>
+              <label class="toggle"><input type="checkbox" id="att-require-reason"><span class="toggle-slider"></span></label>
             </div>
             <div class="settings-row">
-              <div><div class="label">Late Deduction per Occurrence</div><div class="hint">Amount deducted per late arrival</div></div>
-              <input class="form-control" style="width:100px;" type="number" value="50">
+              <div><div class="label">Enable Location Tracking</div><div class="hint">Log GPS coordinates on punch</div></div>
+              <label class="toggle"><input type="checkbox" id="att-track-location"><span class="toggle-slider"></span></label>
             </div>
             <div class="settings-row">
-              <div><div class="label">Working Days per Month</div><div class="hint">For fixed salary calculation</div></div>
-              <input class="form-control" style="width:80px;" type="number" value="26" min="20" max="31">
+              <div><div class="label">Global Shift Start Time</div><div class="hint">Default start time for all users</div></div>
+              <input class="form-control" style="width:120px;" type="time" id="att-shift-start">
             </div>
             <div class="settings-row">
-              <div><div class="label">Allow Self-Mark (Students)</div><div class="hint">Students can punch in themselves</div></div>
-              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              <div><div class="label">Grace Period (minutes)</div><div class="hint">Allowed window before/after shift</div></div>
+              <input class="form-control" style="width:80px;" type="number" id="att-grace-period" min="0" max="60">
             </div>
             <div style="margin-top:var(--space-5);">
-              <button class="btn btn-primary btn-sm" onclick="toast('Attendance policy saved','success')">Save Policy</button>
+              <button class="btn btn-primary btn-sm" onclick="saveAttendancePolicy()">Save Attendance Policy</button>
+              <a href="/admin/location-logs.html" class="btn btn-secondary btn-sm" style="margin-left:10px;">📍 View Location Logs</a>
             </div>
           </div>
 
@@ -347,6 +348,11 @@
         if (settings.currency) document.getElementById('s-currency').value = settings.currency;
         if (settings.phone_prefix) document.getElementById('s-prefix').value = settings.phone_prefix;
         if (settings.weekends) document.getElementById('s-weekends').value = settings.weekends;
+
+        if (document.getElementById('att-require-reason')) document.getElementById('att-require-reason').checked = settings.require_reason;
+        if (document.getElementById('att-track-location')) document.getElementById('att-track-location').checked = settings.track_location;
+        if (document.getElementById('att-shift-start')) document.getElementById('att-shift-start').value = settings.shift_start || '09:00';
+        if (document.getElementById('att-grace-period')) document.getElementById('att-grace-period').value = settings.grace_period || 15;
       } catch (e) { toast(e.message, 'error'); }
     }
 
@@ -418,6 +424,19 @@
       try {
         await API.put('/settings/modules', modules);
         toast('Module settings saved successfully', 'success');
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function saveAttendancePolicy() {
+      const payload = {
+        require_reason: document.getElementById('att-require-reason').checked,
+        track_location: document.getElementById('att-track-location').checked,
+        shift_start: document.getElementById('att-shift-start').value,
+        grace_period: parseInt(document.getElementById('att-grace-period').value)
+      };
+      try {
+        await API.put('/settings/shift', payload);
+        toast('✅ Attendance policy updated', 'success');
       } catch (e) { toast(e.message, 'error'); }
     }
 

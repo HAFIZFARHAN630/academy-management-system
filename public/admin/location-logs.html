@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Logs — ClickTake Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/animations.css">
+    <style>
+        .map-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--color-accent-teal);
+            font-weight: 600;
+            text-decoration: none;
+            transition: var(--transition-fast);
+        }
+        .map-link:hover {
+            color: var(--color-primary-light);
+            text-decoration: underline;
+        }
+        .reason-tag {
+            background: rgba(255,255,255,0.05);
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            border: 1px solid var(--border-subtle);
+        }
+    </style>
+</head>
+
+<body class="gradient-mesh">
+    <div class="admin-layout" id="app"></div>
+    <div id="toast-container"></div>
+    <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        document.getElementById('app').innerHTML = `
+    ${getSidebarHTML('attendance')}
+    <main class="main-content">
+      ${getTopbarHTML('Attendance Location Logs')}
+      <div class="page-content">
+        <div class="flex items-center justify-between" style="margin-bottom:var(--space-6);">
+          <div class="text-secondary text-sm">Review GPS coordinates captured during punch operations.</div>
+          <div class="flex gap-3">
+            <input class="form-control" type="date" id="report-date" style="width:170px;padding:8px 12px;" onchange="loadLogs()">
+            <button class="btn btn-secondary" onclick="loadLogs()">🔄 Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <div class="table-header">
+            <h3>📍 GPS Logs</h3>
+            <span id="log-count" class="badge badge-blue">0 records</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Type</th>
+                  <th>Time</th>
+                  <th>Location (GPS)</th>
+                  <th>Window</th>
+                  <th>Reason</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="logs-tbody">
+                <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">Loading logs...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>`;
+
+        initAdminLayout('/admin/attendance.html');
+        document.getElementById('report-date').value = new Date().toLocaleDateString('en-CA', { timeZone: APP_CONFIG.timezone || 'Asia/Karachi' });
+
+        async function loadLogs() {
+            try {
+                const date = document.getElementById('report-date').value;
+                const data = await API.get(`/attendance/daily-report?date=${date}`);
+                
+                // Flatten and filter for those with location or punch data
+                const logs = [];
+                data.forEach(u => {
+                    if (u.punch_in) {
+                        logs.push({
+                            id: u.id,
+                            name: u.full_name,
+                            role: u.role,
+                            type: 'IN',
+                            time: u.punch_in,
+                            lat: u.location_lat,
+                            lng: u.location_lng,
+                            outside: u.outside_window,
+                            reason: u.reason
+                        });
+                    }
+                    if (u.punch_out) {
+                        logs.push({
+                            id: u.id,
+                            name: u.full_name,
+                            role: u.role,
+                            type: 'OUT',
+                            time: u.punch_out,
+                            lat: u.location_lat_out || u.location_lat, // Fallback to in if out not separated (schema might need update)
+                            lng: u.location_lng_out || u.location_lng,
+                            outside: u.outside_window, // Note: backend needs to store separate flags for IN/OUT if needed
+                            reason: u.early_leave_reason || u.late_checkout_reason || u.reason
+                        });
+                    }
+                });
+
+                // Sort by time descending
+                logs.sort((a, b) => b.time - a.time);
+                renderLogs(logs);
+            } catch (e) { toast(e.message, 'error'); }
+        }
+
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logs-tbody');
+            document.getElementById('log-count').textContent = `${logs.length} records`;
+            
+            if (!logs.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">No GPS logs found for this date</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.map(l => {
+                const mapUrl = l.lat && l.lng ? `https://www.google.com/maps?q=${l.lat},${l.lng}` : null;
+                return `<tr>
+                    <td>
+                        <div class="font-semibold">${l.name}</div>
+                        <div class="text-xs text-muted">${l.role.toUpperCase()}</div>
+                    </td>
+                    <td><span class="badge ${l.type === 'IN' ? 'badge-green' : 'badge-rose'}">${l.type}</span></td>
+                    <td>${formatTime(l.time)}</td>
+                    <td>
+                        ${mapUrl ? `
+                            <div class="text-xs text-muted">${l.lat.toFixed(4)}, ${l.lng.toFixed(4)}</div>
+                            <a href="${mapUrl}" target="_blank" class="map-link">📍 View on Map</a>
+                        ` : '<span class="text-muted italic">No GPS data</span>'}
+                    </td>
+                    <td>
+                        <span class="badge ${l.outside ? 'badge-amber' : 'badge-green'}">
+                            ${l.outside ? '⚠️ Outside' : '✅ Inside'}
+                        </span>
+                    </td>
+                    <td>
+                        ${l.reason ? `<div class="reason-tag">${l.reason}</div>` : '<span class="text-muted">—</span>'}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" onclick="toast('Log details coming soon', 'info')">Details</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        loadLogs();
+    </script>
+</body>
+
+</html>

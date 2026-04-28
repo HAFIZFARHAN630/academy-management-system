@@ -195,6 +195,7 @@
 
         function openEditModal(id) {
             const s = allStudents.find(x => x.id === id); if (!s) return;
+            document.getElementById('student-form').reset();
             editingId = id;
             document.getElementById('modal-title').textContent = 'Edit Student';
             document.getElementById('save-btn').textContent = 'Save Changes';

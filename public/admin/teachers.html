@@ -229,6 +229,7 @@
         function openEditModal(id) {
             const t = allTeachers.find(x => x.id === id);
             if (!t) return;
+            document.getElementById('teacher-form').reset();
             editingId = id;
             document.getElementById('modal-title').textContent = 'Edit Teacher';
             document.getElementById('save-btn').textContent = 'Save Changes';

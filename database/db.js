@@ -16,6 +16,7 @@ db.exec(`
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     login_id    TEXT UNIQUE NOT NULL,
     full_name   TEXT NOT NULL,
+    email       TEXT,
     cnic        TEXT,
     phone       TEXT,
     role        TEXT NOT NULL CHECK(role IN ('admin','teacher','student','worker')),
@@ -176,10 +177,14 @@ db.exec(`
 
 // ─── Migrations ───────────────────────────────────────────────────────────────
 function runMigrations() {
+  try { db.exec("ALTER TABLE users ADD COLUMN email TEXT;"); } catch (e) { }
+  try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);"); } catch (e) { }
   try { db.exec("ALTER TABLE users ADD COLUMN address TEXT;"); } catch (e) { }
   try { db.exec("ALTER TABLE users ADD COLUMN emergency_contact TEXT;"); } catch (e) { }
   try { db.exec("ALTER TABLE users ADD COLUMN preferred_language TEXT DEFAULT 'English';"); } catch (e) { }
   try { db.exec("ALTER TABLE attendance ADD COLUMN method TEXT DEFAULT 'manual';"); } catch (e) { }
+  try { db.exec("ALTER TABLE attendance ADD COLUMN reason TEXT;"); } catch (e) { }
+  try { db.exec("ALTER TABLE attendance ADD COLUMN outside_window INTEGER DEFAULT 0;"); } catch (e) { }
   try { db.exec("ALTER TABLE attendance ADD COLUMN location_lat REAL;"); } catch (e) { }
   try { db.exec("ALTER TABLE attendance ADD COLUMN location_lng REAL;"); } catch (e) { }
   try { db.exec("ALTER TABLE users ADD COLUMN face_embedding TEXT;"); } catch (e) { }
@@ -203,7 +208,11 @@ function runMigrations() {
     ['weekends', 'Friday,Saturday'],
     ['face_enabled', '1'],
     ['liveness_enabled', '1'],
-    ['match_threshold', '90']
+    ['match_threshold', '90'],
+    ['require_reason', '0'],
+    ['track_location', '1'],
+    ['shift_start', '09:00'],
+    ['grace_period', '15']
   ];
   const insertSetting = db.prepare("INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)");
   settings.forEach(s => insertSetting.run(s[0], s[1]));

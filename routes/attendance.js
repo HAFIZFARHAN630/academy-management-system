@@ -127,7 +127,7 @@ const getNowTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: proc
 router.post('/punch', async (req, res) => {
   const today = getToday();
   const now = Math.floor(Date.now() / 1000);
-  const { lat, lng, device, reason } = req.body;
+  const { lat, lng, device, reason, outside_window } = req.body;
   const location = lat && lng ? JSON.stringify({ lat, lng }) : null;
 
   const { data: existing } = await supabase
@@ -164,7 +164,9 @@ router.post('/punch', async (req, res) => {
         status: status,
         location_lat: lat || null,
         location_lng: lng || null,
-        method: 'manual'
+        method: 'manual',
+        reason: reason || null,
+        outside_window: !!outside_window
       });
     
     return res.json({ action: 'punch_in', time: now, status });
@@ -196,11 +198,12 @@ router.post('/punch', async (req, res) => {
         location_out: location,
         device_out: device,
         early_leave: isEarly,
-        early_leave_reason: isEarly ? reason : null,
+        early_leave_reason: isEarly ? reason : (reason || null),
         early_leave_status: isEarly ? 'pending' : 'approved',
         late_checkout: isLate,
         late_checkout_reason: isLate ? reason : null,
-        late_checkout_status: isLate ? 'flagged' : 'approved'
+        late_checkout_status: isLate ? 'flagged' : 'approved',
+        outside_window: !!outside_window
       })
       .eq('id', existing.id);
     
