@@ -2,33 +2,14 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const supabase = require('../database/supabase');
 const { authMiddleware, requireRole } = require('../middleware/auth');
-
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const multer = require('multer');
-
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: process.env.CLOUDINARY_FOLDER || 'academy',
-        allowed_formats: ['jpg', 'png', 'jpeg'],
-        transformation: [{ width: 500, height: 500, crop: 'limit' }]
-    }
-});
-
-const upload = multer({ storage: storage });
+const { uploadUserPhoto, handleUploadError } = require('../services/storage.service');
 
 router.use(authMiddleware);
 
-router.post('/upload', upload.single('file'), (req, res) => {
+// ─── FILE UPLOAD ─────────────────────────────────────────────────────────────
+router.post('/upload', uploadUserPhoto, handleUploadError, (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    res.json({ url: req.file.path });
+    res.json({ url: req.file.path, public_id: req.file.filename });
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

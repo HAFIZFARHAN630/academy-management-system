@@ -35,7 +35,7 @@ const API = {
 async function uploadToCloudinary(file) {
     if (!file) return null;
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('photo', file);
 
     const token = getToken();
     const res = await fetch(`${API_BASE}/users/upload`, {
