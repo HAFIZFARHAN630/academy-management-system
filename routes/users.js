@@ -254,7 +254,7 @@ router.get('/students', requireRole('admin', 'teacher'), async (req, res) => {
     const { class_name, section } = req.query;
     let query = supabase
         .from('users')
-        .select('id,login_id,full_name,email,phone,address,emergency_contact,roll_no,class_name,section,parent_name,parent_phone,status,photo,is_face_enrolled')
+        .select('id,login_id,full_name,email,phone,address,emergency_contact,roll_no,class_name,section,parent_name,parent_phone,status,photo,is_face_enrolled,subject,base_salary')
         .eq('role', 'student');
     
     if (class_name) query = query.eq('class_name', class_name);
@@ -267,7 +267,7 @@ router.get('/students', requireRole('admin', 'teacher'), async (req, res) => {
 });
 
 router.post('/students', requireRole('admin'), async (req, res) => {
-    const { full_name, email, cnic, phone, address, emergency_contact, roll_no, class_name, section, parent_name, parent_phone, medical_notes, photo } = req.body;
+    const { full_name, email, cnic, phone, address, emergency_contact, roll_no, class_name, section, parent_name, parent_phone, medical_notes, photo, fees_due_date, fees_per_month } = req.body;
     if (!full_name || !class_name) return res.status(400).json({ error: 'Name and class required' });
     
     const login_id = await generateLoginId('student');
@@ -293,7 +293,9 @@ router.post('/students', requireRole('admin'), async (req, res) => {
             parent_name,
             parent_phone,
             medical_notes,
-            photo
+            photo,
+            subject: fees_due_date,
+            base_salary: fees_per_month ? parseFloat(fees_per_month) : null
         })
         .select()
         .single();
@@ -303,7 +305,7 @@ router.post('/students', requireRole('admin'), async (req, res) => {
 });
 
 router.put('/students/:id', requireRole('admin'), async (req, res) => {
-    const { full_name, email, cnic, phone, address, emergency_contact, roll_no, class_name, section, parent_name, parent_phone, medical_notes, status, photo } = req.body;
+    const { full_name, email, cnic, phone, address, emergency_contact, roll_no, class_name, section, parent_name, parent_phone, medical_notes, status, photo, fees_due_date, fees_per_month } = req.body;
     const { error } = await supabase
         .from('users')
         .update({
@@ -320,7 +322,9 @@ router.put('/students/:id', requireRole('admin'), async (req, res) => {
             medical_notes,
             status,
             photo,
-            email
+            email,
+            subject: fees_due_date,
+            base_salary: fees_per_month ? parseFloat(fees_per_month) : null
         })
         .eq('id', req.params.id)
         .eq('role', 'student');

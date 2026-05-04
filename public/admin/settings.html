@@ -318,6 +318,22 @@
             </div>
           </div>
 
+          <!-- Privacy Policy -->
+          <div class="settings-card">
+            <h4>📄 Privacy Policy & Legal</h4>
+            <div class="form-group">
+                <label class="form-label">Privacy Policy Content (Markdown/HTML supported)</label>
+                <textarea class="form-control" id="privacy-content" rows="8" placeholder="Enter privacy policy text here..."></textarea>
+            </div>
+            <div style="margin-top:var(--space-3); display:flex; justify-content:space-between; align-items:center;">
+                <div class="text-sm text-muted" id="privacy-status">Current Status: Loading...</div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-secondary btn-sm" onclick="savePrivacyPolicy('draft')">💾 Save Draft</button>
+                    <button class="btn btn-primary btn-sm" onclick="savePrivacyPolicy('published')">🚀 Publish to Live</button>
+                </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- Audit Log -->
@@ -353,6 +369,19 @@
         if (document.getElementById('att-track-location')) document.getElementById('att-track-location').checked = settings.track_location;
         if (document.getElementById('att-shift-start')) document.getElementById('att-shift-start').value = settings.shift_start || '09:00';
         if (document.getElementById('att-grace-period')) document.getElementById('att-grace-period').value = settings.grace_period || 15;
+
+        // Load Privacy Policy
+        try {
+            const policy = await API.get('/settings/privacy');
+            if (policy && policy.content) {
+                document.getElementById('privacy-content').value = policy.content;
+                document.getElementById('privacy-status').innerHTML = `Current Status: <strong>${policy.status.toUpperCase()}</strong> (v${policy.version})`;
+            } else {
+                document.getElementById('privacy-status').innerText = 'No policy found. Create one above.';
+            }
+        } catch (e) {
+            console.warn('Privacy policy load error:', e);
+        }
       } catch (e) { toast(e.message, 'error'); }
     }
 
@@ -438,6 +467,19 @@
         await API.put('/settings/shift', payload);
         toast('✅ Attendance policy updated', 'success');
       } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function savePrivacyPolicy(status) {
+        const content = document.getElementById('privacy-content').value;
+        if (!content.trim()) return toast('Policy content cannot be empty', 'warning');
+        
+        try {
+            await API.post('/settings/privacy', { content, status });
+            toast(`Privacy Policy ${status === 'published' ? 'published to live site' : 'saved as draft'}`, 'success');
+            initSettings(); // reload
+        } catch (e) {
+            toast(e.message, 'error');
+        }
     }
 
     initSettings();

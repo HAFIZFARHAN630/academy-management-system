@@ -11,6 +11,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
@@ -22,6 +25,8 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/timetable', require('./routes/timetable'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/registrations', require('./routes/registrations'));
+app.use('/api/data', require('./routes/import_export'));
 
 // ─── Cron Jobs ────────────────────────────────────────────────────────────────
 require('./cron').initCron();

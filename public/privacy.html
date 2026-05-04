@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — ClickTake Academy</title>
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <style>
+    body {
+      background: var(--bg-900);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--space-8) var(--space-4);
+    }
+    .content-container {
+      width: 100%;
+      max-width: 800px;
+      background: var(--bg-700);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
+      box-shadow: var(--shadow-xl);
+    }
+    .page-header {
+      text-align: center;
+      margin-bottom: var(--space-8);
+      padding-bottom: var(--space-4);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .page-header h1 {
+      font-family: var(--font-display);
+      margin-bottom: 8px;
+    }
+    .policy-content {
+      line-height: 1.6;
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      white-space: pre-wrap; /* For simple markdown/newlines */
+    }
+  </style>
+</head>
+<body class="gradient-mesh">
+  
+  <div class="content-container">
+    <div class="page-header">
+      <h1>Privacy Policy</h1>
+      <p class="text-muted" id="policy-meta">Loading latest policy...</p>
+    </div>
+
+    <div class="policy-content" id="policy-body">
+      <!-- Content injected here -->
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
+      <a href="/" class="btn btn-secondary">← Back to Home</a>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="/js/api.js"></script>
+  <script>
+    async function loadPolicy() {
+      try {
+        const policy = await fetch('/api/settings/privacy').then(r => r.json());
+        if (policy && policy.content && policy.status === 'published') {
+            document.getElementById('policy-body').textContent = policy.content;
+            document.getElementById('policy-meta').textContent = `Version ${policy.version} - Last updated: ${new Date(policy.updated_at || policy.created_at).toLocaleDateString()}`;
+        } else {
+            document.getElementById('policy-body').innerHTML = '<p style="text-align:center;color:var(--text-muted)">No privacy policy has been published yet.</p>';
+            document.getElementById('policy-meta').textContent = '';
+        }
+      } catch (err) {
+        document.getElementById('policy-body').innerHTML = '<p style="text-align:center;color:var(--color-accent-rose)">Failed to load privacy policy. Please try again later.</p>';
+        document.getElementById('policy-meta').textContent = '';
+      }
+    }
+    loadPolicy();
+  </script>
+</body>
+</html>

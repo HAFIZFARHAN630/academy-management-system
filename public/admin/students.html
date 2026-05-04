@@ -42,6 +42,10 @@
                         <div class="form-group"><label class="form-label">Parent Name</label><input class="form-control" id="f-parent" placeholder="Father/Guardian name"></div>
                         <div class="form-group"><label class="form-label">Parent Phone</label><input class="form-control" id="f-parent-phone" placeholder="03xx-xxxxxxx"></div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group"><label class="form-label">Fees Per Month (Rs)</label><input type="number" class="form-control" id="f-fees-per-month" placeholder="e.g. 5000"></div>
+                        <div class="form-group"><label class="form-label">Fees Due Date</label><input class="form-control" id="f-fees-due-date" placeholder="e.g. 5th of every month"></div>
+                    </div>
                     <div class="form-group"><label class="form-label">Full Address</label><textarea class="form-control" id="f-address" rows="2" placeholder="Student's residential address..."></textarea></div>
                     <div class="form-group"><label class="form-label">Medical Notes</label><textarea class="form-control" id="f-medical" rows="2" placeholder="Any allergies or medical conditions..."></textarea></div>
                     <div class="form-row">
@@ -100,6 +104,41 @@
         </div>
     </div>
 
+    </div>
+
+    <!-- Import Modal -->
+    <div class="modal-overlay" id="import-modal" style="z-index: 2000;">
+        <div class="modal" style="max-width:800px;">
+            <div class="modal-header">
+                <h3>📥 Import Students Data</h3><button class="btn-close" onclick="document.getElementById('import-modal').classList.remove('open')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Upload CSV or Excel File</label>
+                    <input type="file" id="import-file" class="form-control" accept=".csv, .xlsx, .xls" onchange="previewImport('student')">
+                    <small class="text-muted">Required columns: Name, Class. Optional: Phone, Email, Address, Parent Name, etc.</small>
+                </div>
+                
+                <div id="import-preview-section" style="display:none; margin-top:20px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <strong>Preview:</strong>
+                        <span id="import-stats" class="text-sm"></span>
+                    </div>
+                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
+                        <table class="data-table" style="font-size: 0.85rem;">
+                            <thead><tr><th>Row</th><th>Name</th><th>Phone</th><th>Class</th><th>Status</th></tr></thead>
+                            <tbody id="import-preview-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('import-modal').classList.remove('open')">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmImport('student')" id="btn-confirm-import" style="display:none;">Confirm Import</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
     <script src="/js/api.js"></script>
     <script src="/js/admin.js"></script>
@@ -117,6 +156,13 @@
             <div class="flex items-center gap-3">
               <div class="search-bar"><span>🔍</span><input type="text" id="search-input" placeholder="Search by name, roll no..." oninput="filterTable()" onkeydown="if(event.key==='Enter') filterTable()"></div>
               <input class="form-control" style="width:130px;padding:8px 12px;" id="class-filter" placeholder="Filter class" oninput="filterTable()">
+              <select class="form-control" style="width:130px;padding:8px 12px;" id="export-format">
+                <option value="csv">Export CSV</option>
+                <option value="excel">Export Excel</option>
+                <option value="pdf">Export PDF</option>
+              </select>
+              <button class="btn btn-secondary" onclick="exportData('student')">📤 Export</button>
+              <button class="btn btn-secondary" onclick="openImportModal('student')">📥 Import</button>
               <button class="btn btn-primary" onclick="openAddModal()">➕ Add Student</button>
             </div>
           </div>
@@ -210,6 +256,8 @@
             document.getElementById('f-emergency').value = s.emergency_contact || '';
             document.getElementById('f-parent').value = s.parent_name || '';
             document.getElementById('f-parent-phone').value = s.parent_phone || '';
+            document.getElementById('f-fees-per-month').value = s.base_salary || '';
+            document.getElementById('f-fees-due-date').value = s.subject || '';
             document.getElementById('f-medical').value = s.medical_notes || '';
             document.getElementById('f-status').value = s.status || 'active';
             document.getElementById('f-status-grp').style.display = 'block';
@@ -249,6 +297,8 @@
                     section: document.getElementById('f-section').value, 
                     parent_name: document.getElementById('f-parent').value, 
                     parent_phone: document.getElementById('f-parent-phone').value, 
+                    fees_per_month: document.getElementById('f-fees-per-month').value || null,
+                    fees_due_date: document.getElementById('f-fees-due-date').value || null,
                     medical_notes: document.getElementById('f-medical').value, 
                     status: document.getElementById('f-status').value,
                     photo: photoUrl
@@ -340,6 +390,91 @@
             else if (btn.classList.contains('action-reset-face')) resetFace(id, name, enrolled, e);
             else if (btn.classList.contains('action-deactivate')) deactivate(id, name, e);
         });
+
+        // Import / Export Logic
+        function exportData(role) {
+            const format = document.getElementById('export-format').value;
+            window.location.href = `/api/data/export/${role}?format=${format}`;
+        }
+
+        function openImportModal(role) {
+            document.getElementById('import-file').value = '';
+            document.getElementById('import-preview-section').style.display = 'none';
+            document.getElementById('btn-confirm-import').style.display = 'none';
+            document.getElementById('import-modal').classList.add('open');
+        }
+
+        let pendingImportRecords = [];
+
+        async function previewImport(role) {
+            const fileInput = document.getElementById('import-file');
+            if (!fileInput.files.length) return;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            // Show a parsing indicator
+            document.getElementById('import-preview-section').style.display = 'block';
+            document.getElementById('import-stats').innerHTML = `Parsing...`;
+            document.getElementById('import-preview-tbody').innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
+            document.getElementById('btn-confirm-import').style.display = 'none';
+
+            try {
+                const res = await fetch(`/api/data/import/${role}/preview`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + getToken() },
+                    body: formData
+                });
+                const data = await res.json();
+                if(!res.ok) throw new Error(data.error || 'Preview failed');
+
+                pendingImportRecords = data.preview.filter(r => r.isValid).map(r => r.mapped);
+                
+                document.getElementById('import-stats').innerHTML = `Total: ${data.total} | <span style="color:var(--color-accent-teal)">Valid: ${data.valid}</span> | <span style="color:var(--color-accent-rose)">Invalid: ${data.invalid}</span>`;
+                
+                let tbody = '';
+                data.preview.slice(0, 50).forEach(r => {
+                    let statusHtml = '';
+                    if (r.isValid) {
+                        if (r.warnings && r.warnings.length > 0) {
+                            statusHtml = `<span style="color:var(--color-accent-amber)" title="${r.warnings.join(', ')}">⚠️ Valid (Missing ${r.warnings.length} fields)</span>`;
+                        } else {
+                            statusHtml = `<span style="color:var(--color-accent-teal)">✅ Valid</span>`;
+                        }
+                    } else {
+                        statusHtml = `<span style="color:var(--color-accent-rose)">❌ ${r.errors.join(', ')}</span>`;
+                    }
+                    tbody += `<tr><td>${r.row}</td><td>${r.mapped.full_name || '-'}</td><td>${r.mapped.phone || '-'}</td><td>${r.mapped.class_name || '-'}</td><td>${statusHtml}</td></tr>`;
+                });
+                document.getElementById('import-preview-tbody').innerHTML = tbody;
+                
+                document.getElementById('import-preview-section').style.display = 'block';
+                if(data.valid > 0) document.getElementById('btn-confirm-import').style.display = 'inline-block';
+                else document.getElementById('btn-confirm-import').style.display = 'none';
+
+            } catch (err) {
+                toast(err.message, 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = 'Preview Data';
+            }
+        }
+
+        async function confirmImport(role) {
+            if(!pendingImportRecords.length) return;
+            const btn = document.getElementById('btn-confirm-import');
+            btn.disabled = true; btn.textContent = 'Importing...';
+
+            try {
+                const res = await API.post(`/data/import/${role}/confirm`, { records: pendingImportRecords });
+                toast(`Successfully imported ${res.count} records`, 'success');
+                document.getElementById('import-modal').classList.remove('open');
+                loadStudents();
+            } catch (err) {
+                toast(err.message, 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = 'Confirm Import';
+            }
+        }
 
         if (new URLSearchParams(location.search).get('action') === 'add') setTimeout(openAddModal, 500);
         loadStudents();

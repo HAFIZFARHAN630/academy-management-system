@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const supabase = require('../database/supabase');
+const db = require('../database/db');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
 // Seed default settings if they don't exist
@@ -125,6 +126,49 @@ router.put('/regional', authMiddleware, requireRole('admin'), async (req, res) =
     }
     
     res.json({ success: true });
+});
+
+// ─── Privacy Policy ──────────────────────────────────────────────────────────
+router.get('/privacy', async (req, res) => {
+    try {
+        const row = db.prepare("SELECT * FROM privacy_policies ORDER BY version DESC LIMIT 1").get();
+            
+        if (!row) return res.json({ content: '', status: 'draft', version: 0 });
+        
+        res.json(row);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/privacy', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const { content, status } = req.body;
+        if (!content) return res.status(400).json({ error: 'Content required' });
+        
+        // Get current version
+        const current = db.prepare("SELECT version FROM privacy_policies ORDER BY version DESC LIMIT 1").get();
+            
+        let newVersion = (current?.version || 0) + 1;
+        
+        const stmt = db.prepare(`
+            INSERT INTO privacy_policies (content, status, version, published_by)
+            VALUES (?, ?, ?, ?)
+        `);
+        const info = stmt.run(content, status || 'draft', newVersion, req.user.id);
+        
+        // Log action
+        await supabase.from('audit_log').insert({
+            admin_id: req.user.id,
+            action: 'UPDATE_PRIVACY_POLICY',
+            target_table: 'privacy_policies',
+            details: `Created new privacy policy (v${newVersion}) - Status: ${status}`
+        });
+
+        res.json({ id: info.lastInsertRowid, content, status: status || 'draft', version: newVersion });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 module.exports = router;

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pending Registrations — ClickTake Academy</title>
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/components.css">
+</head>
+<body class="gradient-mesh">
+  <div class="admin-layout" id="app"></div>
+
+  <!-- Review Modal -->
+  <div class="modal" id="review-modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 id="review-title">Review Application</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeReviewModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="review-details" style="margin-bottom: 20px; padding: 15px; background: var(--bg-700); border-radius: var(--radius-md); font-size: 0.9rem;">
+            <!-- Rendered details go here -->
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Assign Class/Year</label>
+            <input type="text" id="assign-class" class="form-control" placeholder="e.g. Year 5">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Assign Section</label>
+            <input type="text" id="assign-section" class="form-control" placeholder="e.g. A">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Admin Notes (Optional/Rejection Reason)</label>
+            <textarea id="admin-notes" class="form-control" rows="2" placeholder="Internal notes or reason for rejection..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="closeReviewModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="rejectApplication()" id="btn-reject">Reject</button>
+        <button class="btn btn-primary" onclick="approveApplication()" id="btn-approve">Approve & Register</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credentials Modal -->
+  <div class="modal" id="cred-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✅ Registration Approved</h3>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <p>A new student account has been created successfully.</p>
+        <div style="margin: 20px 0; padding: 20px; background: var(--bg-700); border-radius: var(--radius-md);">
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px;">Login ID</div>
+            <div style="font-size: 1.5rem; font-family: var(--font-display); color: var(--color-primary-light);" id="cred-login"></div>
+            
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 15px; margin-bottom: 5px;">Temporary Password</div>
+            <div style="font-size: 1.5rem; font-family: monospace; color: var(--color-accent-teal);" id="cred-pass"></div>
+        </div>
+        <p class="text-sm text-muted">Please share these credentials securely with the parent/student.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="window.location.reload()" style="width: 100%;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="/js/api.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>
+    document.getElementById('app').innerHTML = `
+      ${getSidebarHTML('registrations')}
+      <main class="main-content">
+        ${getTopbarHTML('Registrations / Approvals')}
+        <div class="page-content">
+          <div class="stats-grid" style="margin-bottom: var(--space-6);">
+            <div class="stat-card">
+              <div class="val" id="stat-pending">0</div>
+              <div class="lbl">Pending Approvals</div>
+            </div>
+            <div class="stat-card">
+              <div class="val" id="stat-approved">0</div>
+              <div class="lbl">Approved (All Time)</div>
+            </div>
+            <div class="stat-card">
+              <div class="val" id="stat-rejected">0</div>
+              <div class="lbl">Rejected</div>
+            </div>
+          </div>
+          
+          <div class="table-container">
+            <div class="table-header">
+              <h3>Pending Applications</h3>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Student Name</th>
+                  <th>Class</th>
+                  <th>Parent Contact</th>
+                  <th>Payment</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="registrations-tbody">
+                <tr><td colspan="7" style="text-align:center;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    `;
+
+    initAdminLayout('/admin/registrations.html');
+
+    let currentRegistrations = [];
+    let selectedRegId = null;
+
+    async function loadRegistrations() {
+        try {
+            const data = await API.get('/registrations');
+            currentRegistrations = data;
+            
+            let pendingCount = 0;
+            let approvedCount = 0;
+            let rejectedCount = 0;
+            
+            let html = '';
+            data.forEach(r => {
+                if (r.status === 'PENDING') pendingCount++;
+                if (r.status === 'APPROVED') approvedCount++;
+                if (r.status === 'REJECTED') rejectedCount++;
+                
+                const date = new Date(r.created_at).toLocaleDateString();
+                const badgeClass = r.status === 'PENDING' ? 'badge-amber' : (r.status === 'APPROVED' ? 'badge-green' : 'badge-red');
+                
+                html += `
+                    <tr>
+                        <td>${date}</td>
+                        <td style="font-weight: 500;">${r.student_details.full_name}</td>
+                        <td>${r.student_details.class_name}</td>
+                        <td>${r.parent_details.phone}<br><small class="text-muted">${r.parent_details.full_name}</small></td>
+                        <td>${r.payment_method}</td>
+                        <td><span class="badge ${badgeClass}">${r.status}</span></td>
+                        <td>
+                            ${r.status === 'PENDING' ? `<button class="btn btn-secondary btn-sm" onclick="openReviewModal('${r.id}')">Review</button>` : `<span class="text-muted text-sm">Reviewed</span>`}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            document.getElementById('stat-pending').innerText = pendingCount;
+            document.getElementById('stat-approved').innerText = approvedCount;
+            document.getElementById('stat-rejected').innerText = rejectedCount;
+            
+            document.getElementById('registrations-tbody').innerHTML = html || '<tr><td colspan="7" style="text-align:center;">No registrations found</td></tr>';
+        } catch (e) {
+            toast(e.message, 'error');
+        }
+    }
+
+    function openReviewModal(id) {
+        selectedRegId = id;
+        const reg = currentRegistrations.find(r => r.id === id);
+        
+        document.getElementById('assign-class').value = reg.student_details.class_name || '';
+        document.getElementById('assign-section').value = '';
+        document.getElementById('admin-notes').value = '';
+        
+        document.getElementById('review-details').innerHTML = `
+            <strong>Student:</strong> ${reg.student_details.full_name} (${reg.student_details.gender}, DOB: ${reg.student_details.dob})<br>
+            <strong>Address:</strong> ${reg.student_details.address}, ${reg.student_details.postcode}<br>
+            <strong>Parent:</strong> ${reg.parent_details.full_name} (${reg.parent_details.phone}, ${reg.parent_details.email})<br>
+            <strong>Emergency:</strong> ${reg.parent_details.emergency_contact}<br>
+            <strong>Health Issues:</strong> ${reg.health_details.has_condition ? '<span style="color:red;">Yes - ' + reg.health_details.details + '</span>' : 'None'}<br>
+            <strong>Payment:</strong> ${reg.payment_method}<br>
+            <strong>GDPR Consent:</strong> ${reg.gdpr_consent ? '✅ Yes' : '❌ No'}
+        `;
+        
+        document.getElementById('review-modal').classList.add('active');
+    }
+
+    function closeReviewModal() {
+        document.getElementById('review-modal').classList.remove('active');
+        selectedRegId = null;
+    }
+
+    async function approveApplication() {
+        if (!selectedRegId) return;
+        const btn = document.getElementById('btn-approve');
+        btn.disabled = true; btn.innerHTML = 'Approving...';
+        
+        try {
+            const res = await API.put(`/registrations/${selectedRegId}/approve`, {
+                class_name: document.getElementById('assign-class').value,
+                section: document.getElementById('assign-section').value,
+                admin_notes: document.getElementById('admin-notes').value
+            });
+            
+            closeReviewModal();
+            
+            // Show credentials
+            document.getElementById('cred-login').innerText = res.login_id;
+            document.getElementById('cred-pass').innerText = res.temp_password;
+            document.getElementById('cred-modal').classList.add('active');
+            
+        } catch (e) {
+            toast(e.message, 'error');
+            btn.disabled = false; btn.innerHTML = 'Approve & Register';
+        }
+    }
+
+    async function rejectApplication() {
+        if (!selectedRegId) return;
+        const notes = document.getElementById('admin-notes').value;
+        if (!notes) {
+            toast('Please provide a reason for rejection in Admin Notes', 'warning');
+            return;
+        }
+        
+        const btn = document.getElementById('btn-reject');
+        btn.disabled = true; btn.innerHTML = 'Rejecting...';
+        
+        try {
+            await API.put(`/registrations/${selectedRegId}/reject`, { reason: notes });
+            toast('Application rejected', 'success');
+            closeReviewModal();
+            loadRegistrations();
+        } catch (e) {
+            toast(e.message, 'error');
+            btn.disabled = false; btn.innerHTML = 'Reject';
+        }
+    }
+
+    loadRegistrations();
+  </script>
+</body>
+</html>

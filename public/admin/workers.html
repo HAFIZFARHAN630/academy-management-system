@@ -97,7 +97,40 @@
                     onclick="document.getElementById('cred-modal').classList.remove('open')">Done</button>
             </div>
         </div>
+    <!-- Import Modal -->
+    <div class="modal-overlay" id="import-modal" style="z-index: 2000;">
+        <div class="modal" style="max-width:800px;">
+            <div class="modal-header">
+                <h3>📥 Import Workers Data</h3><button class="btn-close" onclick="document.getElementById('import-modal').classList.remove('open')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Upload CSV or Excel File</label>
+                    <input type="file" id="import-file" class="form-control" accept=".csv, .xlsx, .xls">
+                    <small class="text-muted">Required columns: Name, Phone. Optional: Designation, Salary, etc.</small>
+                </div>
+                <button class="btn btn-secondary" onclick="previewImport('worker')" id="btn-preview-import">Preview Data</button>
+                
+                <div id="import-preview-section" style="display:none; margin-top:20px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <strong>Preview:</strong>
+                        <span id="import-stats" class="text-sm"></span>
+                    </div>
+                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
+                        <table class="data-table" style="font-size: 0.85rem;">
+                            <thead><tr><th>Row</th><th>Name</th><th>Phone</th><th>Designation</th><th>Status</th></tr></thead>
+                            <tbody id="import-preview-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('import-modal').classList.remove('open')">Cancel</button>
+                <button class="btn btn-primary" id="btn-confirm-import" style="display:none;" onclick="confirmImport('worker')">Confirm Import</button>
+            </div>
+        </div>
     </div>
+
     <div id="toast-container"></div>
     <script src="/js/api.js"></script>
     <script src="/js/admin.js"></script>
@@ -114,6 +147,15 @@
             <h3>👷 All Workers</h3>
             <div class="flex gap-3">
               <div class="search-bar"><span>🔍</span><input type="text" id="search-input" placeholder="Search workers..." oninput="filterTable()" onkeydown="if(event.key==='Enter') filterTable()"></div>
+              <div style="display:flex; gap: 0.5rem;">
+                  <button class="btn btn-secondary" onclick="openImportModal('worker')">📥 Import</button>
+                  <select id="export-format" class="form-control" style="width:80px; padding:8px;" onchange="if(this.value) exportData('worker'); this.value='';">
+                      <option value="">Export</option>
+                      <option value="csv">CSV</option>
+                      <option value="excel">Excel</option>
+                      <option value="pdf">PDF</option>
+                  </select>
+              </div>
               <button class="btn btn-primary" onclick="openAddModal()">➕ Add Worker</button>
             </div>
           </div>
@@ -326,6 +368,79 @@
 
         if (new URLSearchParams(location.search).get('action') === 'add') setTimeout(openAddModal, 500);
         loadWorkers();
+
+        // Import / Export Logic
+        function exportData(role) {
+            const format = document.getElementById('export-format').value;
+            window.location.href = `/api/data/export/${role}?format=${format}`;
+        }
+
+        function openImportModal(role) {
+            document.getElementById('import-file').value = '';
+            document.getElementById('import-preview-section').style.display = 'none';
+            document.getElementById('btn-confirm-import').style.display = 'none';
+            document.getElementById('import-modal').classList.add('open');
+        }
+
+        let pendingImportRecords = [];
+
+        async function previewImport(role) {
+            const fileInput = document.getElementById('import-file');
+            if (!fileInput.files.length) return toast('Please select a file', 'warning');
+
+            const btn = document.getElementById('btn-preview-import');
+            btn.disabled = true; btn.textContent = 'Parsing...';
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const res = await fetch(`/api/data/import/${role}/preview`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + getToken() },
+                    body: formData
+                });
+                const data = await res.json();
+                if(!res.ok) throw new Error(data.error || 'Preview failed');
+
+                pendingImportRecords = data.preview.filter(r => r.isValid).map(r => r.mapped);
+                
+                document.getElementById('import-stats').innerHTML = `Total: ${data.total} | <span style="color:var(--color-accent-teal)">Valid: ${data.valid}</span> | <span style="color:var(--color-accent-rose)">Invalid: ${data.invalid}</span>`;
+                
+                let tbody = '';
+                data.preview.slice(0, 50).forEach(r => {
+                    const statusHtml = r.isValid ? '<span style="color:var(--color-accent-teal)">✅ Valid</span>' : `<span style="color:var(--color-accent-rose)">❌ ${r.errors.join(', ')}</span>`;
+                    tbody += `<tr><td>${r.row}</td><td>${r.mapped.full_name || '-'}</td><td>${r.mapped.phone || '-'}</td><td>${r.mapped.designation || '-'}</td><td>${statusHtml}</td></tr>`;
+                });
+                document.getElementById('import-preview-tbody').innerHTML = tbody;
+                
+                document.getElementById('import-preview-section').style.display = 'block';
+                if (pendingImportRecords.length > 0) {
+                    document.getElementById('btn-confirm-import').style.display = 'inline-flex';
+                    document.getElementById('btn-confirm-import').textContent = `Import ${pendingImportRecords.length} Records`;
+                }
+            } catch (err) {
+                toast(err.message, 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = 'Preview Data';
+            }
+        }
+
+        async function confirmImport(role) {
+            if (!pendingImportRecords.length) return;
+            const btn = document.getElementById('btn-confirm-import');
+            btn.disabled = true; btn.textContent = 'Importing...';
+
+            try {
+                const res = await API.post(`/data/import/${role}/confirm`, { records: pendingImportRecords });
+                toast(`Successfully imported ${res.count} records!`, 'success');
+                document.getElementById('import-modal').classList.remove('open');
+                loadWorkers();
+            } catch (err) {
+                toast(err.message, 'error');
+                btn.disabled = false; btn.textContent = 'Confirm Import';
+            }
+        }
     </script>
 </body>
 

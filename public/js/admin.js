@@ -19,6 +19,14 @@ function initAdminLayout(activePagePath) {
             </div>
         </div>`;
         document.body.appendChild(div.firstElementChild);
+
+        // Inject Idle Tracker script globally
+        if (!document.getElementById('idle-tracker-script')) {
+            const script = document.createElement('script');
+            script.id = 'idle-tracker-script';
+            script.src = '/js/idle-tracker.js';
+            document.body.appendChild(script);
+        }
     }
 
     if (!requireAuth(['admin'])) return;
@@ -101,6 +109,7 @@ function getSidebarHTML(activePage) {
       </div>
       <div class="sidebar-section">
         <div class="sidebar-section-label">Users</div>
+        <a href="/admin/registrations.html" class="nav-item ${activePage === 'registrations' ? 'active' : ''}"><span class="nav-icon">📝</span><span class="nav-label">Registrations</span></a>
         <a href="/admin/teachers.html" class="nav-item ${activePage === 'teachers' ? 'active' : ''}"><span class="nav-icon">👨‍🏫</span><span class="nav-label">Teachers</span></a>
         <a href="/admin/calendar.html" class="nav-item ${activePage === 'calendar' ? 'active' : ''}"><span class="nav-icon">📅</span><span class="nav-label">Calendar</span></a>
         <a href="/admin/students.html" class="nav-item ${activePage === 'students' ? 'active' : ''}"><span class="nav-icon">🎓</span><span class="nav-label">Students</span></a>

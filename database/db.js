@@ -173,6 +173,28 @@ db.exec(`
     is_public   INTEGER DEFAULT 1,
     created_at  INTEGER DEFAULT (strftime('%s','now'))
   );
+
+  CREATE TABLE IF NOT EXISTS pending_registrations (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_details TEXT NOT NULL,
+    parent_details  TEXT NOT NULL,
+    health_details  TEXT,
+    payment_method  TEXT,
+    gdpr_consent    INTEGER,
+    status          TEXT DEFAULT 'PENDING',
+    admin_notes     TEXT,
+    created_at      INTEGER DEFAULT (strftime('%s','now')),
+    updated_at      INTEGER DEFAULT (strftime('%s','now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS privacy_policies (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    version      INTEGER NOT NULL,
+    content      TEXT NOT NULL,
+    status       TEXT DEFAULT 'draft',
+    published_by INTEGER,
+    created_at   INTEGER DEFAULT (strftime('%s','now'))
+  );
 `);
 
 // ─── Migrations ───────────────────────────────────────────────────────────────
