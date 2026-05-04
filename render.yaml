@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: academy-management-system
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      # Add your SUPABASE_URL and SUPABASE_KEY in the Render Dashboard
+    disk:
+      name: academy-db
+      mountPath: /data
+      sizeGB: 1
