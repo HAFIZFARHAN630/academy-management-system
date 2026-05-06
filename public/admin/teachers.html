@@ -491,7 +491,22 @@
 
             try {
                 const res = await API.post(`/data/import/${role}/confirm`, { records: pendingImportRecords });
-                toast(`Successfully imported ${res.count} records!`, 'success');
+                toast(`Successfully imported ${res.count} records. Downloading credentials...`, 'success');
+                
+                if (res.results && res.results.length > 0) {
+                    let csvContent = "data:text/csv;charset=utf-8,Login ID,Full Name,Password\n";
+                    res.results.forEach(r => {
+                        csvContent += `${r.login_id},${r.full_name},${r.password}\n`;
+                    });
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", `${role}_credentials.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                }
+
                 document.getElementById('import-modal').classList.remove('open');
                 loadTeachers();
             } catch (err) {

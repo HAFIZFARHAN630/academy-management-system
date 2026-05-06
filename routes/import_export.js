@@ -65,18 +65,18 @@ function validateRecords(records, role, res) {
         
         if (role === 'student') {
             const class_name = r['Class'] || r['Grade'] || r['Year'];
-            if (!class_name) errors.push('Class is required');
+            if (!class_name) warnings.push('Class is missing');
             
-            if (!phone) warnings.push('Phone');
-            if (!r['Email']) warnings.push('Email');
-            if (!r['Address']) warnings.push('Address');
-            if (!r['Parent Name']) warnings.push('Parent Name');
-            if (!r['Fees Due Date']) warnings.push('Fees Due Date');
-            if (!r['Fees Per Month']) warnings.push('Fees Per Month');
+            if (!phone) warnings.push('Phone is missing');
+            if (!r['Email']) warnings.push('Email is missing');
+            if (!r['Address']) warnings.push('Address is missing');
+            if (!r['Parent Name']) warnings.push('Parent Name is missing');
+            if (!r['Fees Due Date']) warnings.push('Fees Due Date is missing');
+            if (!r['Fees Per Month']) warnings.push('Fees Per Month is missing');
         } else {
-            if (!phone) errors.push('Phone is required');
-            if (!r['Email']) warnings.push('Email');
-            if (!r['Address']) warnings.push('Address');
+            if (!phone) warnings.push('Phone is missing');
+            if (!r['Email']) warnings.push('Email is missing');
+            if (!r['Address']) warnings.push('Address is missing');
         }
 
         return {
@@ -126,10 +126,14 @@ router.post('/import/:role/confirm', authMiddleware, requireRole('admin'), async
 
         let currentNextId = await getNextLoginIdNumber(role);
 
+        const plainPasswords = [];
+        
         const inserts = records.map(r => {
             const login_id = `${prefix}-${String(currentNextId++).padStart(3, '0')}`;
             const temp_password = generateTempPassword();
             const password = bcrypt.hashSync(temp_password, 10);
+            
+            plainPasswords.push(temp_password);
 
             return {
                 login_id,
@@ -159,18 +163,11 @@ router.post('/import/:role/confirm', authMiddleware, requireRole('admin'), async
 
         if (error) throw error;
 
-        // Since we hashed the passwords, we should ideally return the plaintext passwords 
-        // to the admin so they can download the initial credentials list.
-        const results = inserts.map(i => ({
+        const results = inserts.map((i, idx) => ({
             login_id: i.login_id,
             full_name: i.full_name,
-            password: i.temp_password === 1 ? i.password : '***' // Wait, I need plaintext
+            password: plainPasswords[idx]
         }));
-
-        // Replace the hash with plaintext for the response ONLY
-        inserts.forEach((i, idx) => {
-            results[idx].password = 'Password sent separately or reset needed'; // Actually we lost the plain text because we didn't save it to a separate array.
-        });
 
         await supabase.from('audit_log').insert({
             admin_id: req.user.id,
@@ -179,7 +176,7 @@ router.post('/import/:role/confirm', authMiddleware, requireRole('admin'), async
             details: `Imported ${inserts.length} ${role}s`
         });
 
-        res.json({ success: true, count: inserts.length });
+        res.json({ success: true, count: inserts.length, results });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -33,22 +33,26 @@ function generateTempPassword() {
 // POST /api/registrations (Public Submission)
 router.post('/', async (req, res) => {
     try {
-        const { student_details, parent_details, health_details, payment_method, gdpr_consent } = req.body;
+        const { student_details, parent_details, health_details, payment_method, gdpr_consent, signature } = req.body;
         
         if (!student_details || !student_details.full_name) {
             return res.status(400).json({ error: 'Student full name is required' });
         }
+        if (!signature) {
+            return res.status(400).json({ error: 'Digital signature is required' });
+        }
 
         const stmt = db.prepare(`
-            INSERT INTO pending_registrations (student_details, parent_details, health_details, payment_method, gdpr_consent, status)
-            VALUES (?, ?, ?, ?, ?, 'PENDING')
+            INSERT INTO pending_registrations (student_details, parent_details, health_details, payment_method, gdpr_consent, signature, status)
+            VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
         `);
         const info = stmt.run(
             JSON.stringify(student_details),
             JSON.stringify(parent_details),
             JSON.stringify(health_details),
             payment_method,
-            gdpr_consent ? 1 : 0
+            gdpr_consent ? 1 : 0,
+            signature
         );
 
         // Send confirmation email

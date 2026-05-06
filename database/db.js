@@ -183,6 +183,7 @@ db.exec(`
     health_details  TEXT,
     payment_method  TEXT,
     gdpr_consent    INTEGER,
+    signature       TEXT,
     status          TEXT DEFAULT 'PENDING',
     admin_notes     TEXT,
     created_at      INTEGER DEFAULT (strftime('%s','now')),
@@ -224,6 +225,9 @@ function runMigrations() {
   try { db.exec("ALTER TABLE attendance ADD COLUMN late_checkout INTEGER DEFAULT 0;"); } catch (e) { }
   try { db.exec("ALTER TABLE attendance ADD COLUMN late_checkout_reason TEXT;"); } catch (e) { }
   try { db.exec("ALTER TABLE attendance ADD COLUMN late_checkout_status TEXT DEFAULT 'approved';"); } catch (e) { }
+  
+  // V9.0 Migrations - Registration Signature
+  try { db.exec("ALTER TABLE pending_registrations ADD COLUMN signature TEXT;"); } catch (e) { }
   
   // Settings initialization
   const settings = [

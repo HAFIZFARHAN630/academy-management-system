@@ -127,15 +127,51 @@ router.put('/regional', authMiddleware, requireRole('admin'), async (req, res) =
     
     res.json({ success: true });
 });
+// ─── PWA Settings ──────────────────────────────────────────────────────────────
+router.get('/pwa', async (req, res) => {
+    try {
+        const { data: row } = await supabase.from('system_settings').select('value').eq('key', 'pwa_settings').maybeSingle();
+        if (!row) return res.json({ enabled: false, force_app: false, prompt_install: false });
+        res.json(JSON.parse(row.value));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/pwa', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const pwa_settings = req.body;
+        const { error } = await supabase.from('system_settings').upsert({ key: 'pwa_settings', value: JSON.stringify(pwa_settings) });
+        if (error) throw error;
+        
+        await supabase.from('audit_log').insert({
+            admin_id: req.user.id,
+            action: 'UPDATE_PWA_SETTINGS',
+            target_table: 'system_settings',
+            details: `Updated PWA Settings`
+        });
+        
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 // ─── Privacy Policy ──────────────────────────────────────────────────────────
 router.get('/privacy', async (req, res) => {
     try {
-        const row = db.prepare("SELECT * FROM privacy_policies ORDER BY version DESC LIMIT 1").get();
+        const { data: row, error } = await supabase
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'privacy_policy')
+            .maybeSingle();
+
+        if (error) throw error;
             
         if (!row) return res.json({ content: '', status: 'draft', version: 0 });
         
-        res.json(row);
+        res.json(JSON.parse(row.value));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -147,25 +183,38 @@ router.post('/privacy', authMiddleware, requireRole('admin'), async (req, res) =
         if (!content) return res.status(400).json({ error: 'Content required' });
         
         // Get current version
-        const current = db.prepare("SELECT version FROM privacy_policies ORDER BY version DESC LIMIT 1").get();
+        const { data: current } = await supabase
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'privacy_policy')
+            .maybeSingle();
             
-        let newVersion = (current?.version || 0) + 1;
+        let currentData = current ? JSON.parse(current.value) : { version: 0 };
+        let newVersion = (currentData.version || 0) + 1;
         
-        const stmt = db.prepare(`
-            INSERT INTO privacy_policies (content, status, version, published_by)
-            VALUES (?, ?, ?, ?)
-        `);
-        const info = stmt.run(content, status || 'draft', newVersion, req.user.id);
+        const policyData = {
+            content,
+            status: status || 'draft',
+            version: newVersion,
+            published_by: req.user.id,
+            updated_at: new Date().toISOString()
+        };
+
+        const { error } = await supabase
+            .from('system_settings')
+            .upsert({ key: 'privacy_policy', value: JSON.stringify(policyData) });
+            
+        if (error) throw error;
         
         // Log action
         await supabase.from('audit_log').insert({
             admin_id: req.user.id,
             action: 'UPDATE_PRIVACY_POLICY',
-            target_table: 'privacy_policies',
-            details: `Created new privacy policy (v${newVersion}) - Status: ${status}`
+            target_table: 'system_settings',
+            details: `Updated privacy policy (v${newVersion}) - Status: ${status}`
         });
 
-        res.json({ id: info.lastInsertRowid, content, status: status || 'draft', version: newVersion });
+        res.json(policyData);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

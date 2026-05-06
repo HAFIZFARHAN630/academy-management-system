@@ -183,6 +183,28 @@
             </div>
           </div>
 
+          </div>
+
+          <!-- PWA Settings -->
+          <div class="settings-card">
+            <h4>📱 App Settings (PWA)</h4>
+            <div class="settings-row">
+              <div><div class="label">Enable PWA Features</div><div class="hint">Allows app installation</div></div>
+              <label class="toggle"><input type="checkbox" id="pwa-enabled"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Prompt Install</div><div class="hint">Show popup to install app</div></div>
+              <label class="toggle"><input type="checkbox" id="pwa-prompt"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="label">Force App Usage</div><div class="hint">Encourage installed users to use app</div></div>
+              <label class="toggle"><input type="checkbox" id="pwa-force"><span class="toggle-slider"></span></label>
+            </div>
+            <div style="margin-top:var(--space-5);">
+              <button class="btn btn-primary btn-sm" onclick="savePWASettings()">Save App Settings</button>
+            </div>
+          </div>
+
           <!-- Face ID -->
           <div class="settings-card">
             <h4>🤖 Face ID Settings</h4>
@@ -365,6 +387,16 @@
         if (settings.phone_prefix) document.getElementById('s-prefix').value = settings.phone_prefix;
         if (settings.weekends) document.getElementById('s-weekends').value = settings.weekends;
 
+        // Load PWA Settings
+        try {
+            const pwa = await API.get('/settings/pwa');
+            if (document.getElementById('pwa-enabled')) document.getElementById('pwa-enabled').checked = pwa.enabled;
+            if (document.getElementById('pwa-prompt')) document.getElementById('pwa-prompt').checked = pwa.prompt_install;
+            if (document.getElementById('pwa-force')) document.getElementById('pwa-force').checked = pwa.force_app;
+        } catch (e) {
+            console.warn('PWA settings load error:', e);
+        }
+
         if (document.getElementById('att-require-reason')) document.getElementById('att-require-reason').checked = settings.require_reason;
         if (document.getElementById('att-track-location')) document.getElementById('att-track-location').checked = settings.track_location;
         if (document.getElementById('att-shift-start')) document.getElementById('att-shift-start').value = settings.shift_start || '09:00';
@@ -453,6 +485,18 @@
       try {
         await API.put('/settings/modules', modules);
         toast('Module settings saved successfully', 'success');
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function savePWASettings() {
+      const payload = {
+        enabled: document.getElementById('pwa-enabled').checked,
+        prompt_install: document.getElementById('pwa-prompt').checked,
+        force_app: document.getElementById('pwa-force').checked
+      };
+      try {
+        await API.put('/settings/pwa', payload);
+        toast('📱 App Settings saved successfully', 'success');
       } catch (e) { toast(e.message, 'error'); }
     }
 

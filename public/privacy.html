@@ -73,7 +73,8 @@
             document.getElementById('policy-meta').textContent = '';
         }
       } catch (err) {
-        document.getElementById('policy-body').innerHTML = '<p style="text-align:center;color:var(--color-accent-rose)">Failed to load privacy policy. Please try again later.</p>';
+        console.error('Error loading policy:', err);
+        document.getElementById('policy-body').innerHTML = '<p style="text-align:center;color:var(--color-accent-rose)">Failed to load privacy policy. Please try again later or contact administration.</p>';
         document.getElementById('policy-meta').textContent = '';
       }
     }
