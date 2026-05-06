@@ -178,7 +178,9 @@
             <strong>Emergency:</strong> ${reg.parent_details.emergency_contact}<br>
             <strong>Health Issues:</strong> ${reg.health_details.has_condition ? '<span style="color:red;">Yes - ' + reg.health_details.details + '</span>' : 'None'}<br>
             <strong>Payment:</strong> ${reg.payment_method}<br>
-            <strong>GDPR Consent:</strong> ${reg.gdpr_consent ? '✅ Yes' : '❌ No'}
+            <strong>GDPR Consent:</strong> ${reg.gdpr_consent ? '✅ Yes' : '❌ No'}<br>
+            <strong>Digital Signature:</strong><br>
+            ${reg.signature ? `<img src="${reg.signature}" style="max-height: 80px; border: 1px solid var(--border-subtle); background: #fff; border-radius: var(--radius-sm); margin-top: 5px;">` : '<span class="text-muted">No signature provided</span>'}
         `;
         
         document.getElementById('review-modal').classList.add('active');
