@@ -322,20 +322,21 @@
       };
 
       try {
-        await fetch('/api/registrations', {
+        const res = await fetch(`${API_BASE || '/api'}/registrations`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
-        }).then(res => {
-            if(!res.ok) throw new Error('Submission failed');
-            return res.json();
         });
+
+        const data = await res.json().catch(() => ({ error: 'Invalid server response' }));
+        if (!res.ok) throw new Error(data.error || 'Submission failed');
 
         document.getElementById('reg-form-container').style.display = 'none';
         document.getElementById('success-view').style.display = 'block';
 
       } catch(err) {
-        toast('Failed to submit application. Please try again.', 'error');
+        console.error('Registration Error:', err);
+        toast(err.message || 'Failed to submit application. Please try again.', 'error');
         btn.disabled = false;
         btn.innerHTML = 'Submit Application';
       }
