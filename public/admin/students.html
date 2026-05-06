@@ -134,6 +134,10 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="document.getElementById('import-modal').classList.remove('open')">Cancel</button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-secondary" onclick="previewImport('student')" id="btn-preview-import">Preview Data</button>
+                    <button class="btn btn-secondary" onclick="downloadTemplate('student')" style="background:var(--bg-600);">📄 Download Template</button>
+                </div>
                 <button class="btn btn-primary" onclick="confirmImport('student')" id="btn-confirm-import" style="display:none;">Confirm Import</button>
             </div>
         </div>
@@ -420,12 +424,19 @@
             document.getElementById('btn-confirm-import').style.display = 'none';
 
             try {
-                const res = await fetch(`/api/data/import/${role}/preview`, {
+                const res = await fetch(`${API_BASE || '/api'}/data/import/${role}/preview`, {
                     method: 'POST',
                     headers: { 'Authorization': 'Bearer ' + getToken() },
                     body: formData
                 });
-                const data = await res.json();
+                
+                let data;
+                try {
+                    data = await res.json();
+                } catch (parseErr) {
+                    throw new Error('Server returned an invalid response. The file might be too large or the server encountered an error.');
+                }
+                
                 if(!res.ok) throw new Error(data.error || 'Preview failed');
 
                 pendingImportRecords = data.preview.filter(r => r.isValid).map(r => r.mapped);
@@ -460,7 +471,7 @@
         }
 
         async function confirmImport(role) {
-            if(!pendingImportRecords.length) return;
+            if (!pendingImportRecords.length) return;
             const btn = document.getElementById('btn-confirm-import');
             btn.disabled = true; btn.textContent = 'Importing...';
 
@@ -489,6 +500,18 @@
             } finally {
                 btn.disabled = false; btn.textContent = 'Confirm Import';
             }
+        }
+        
+        function downloadTemplate(role) {
+            let headers = "Full Name,Phone,Email,Address,Class,Parent Name,Parent Phone,Fees Per Month,Fees Due Date\n";
+            headers += "John Doe,03001234567,john@example.com,123 Main St,Year 5,Jane Doe,03001234567,2500,5\n";
+            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + headers);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `${role}_import_template.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
         }
 
         if (new URLSearchParams(location.search).get('action') === 'add') setTimeout(openAddModal, 500);

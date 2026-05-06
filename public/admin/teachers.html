@@ -117,7 +117,10 @@
                     <input type="file" id="import-file" class="form-control" accept=".csv, .xlsx, .xls">
                     <small class="text-muted">Required columns: Name, Phone. Optional: Subject, Salary, Joining Date, etc.</small>
                 </div>
-                <button class="btn btn-secondary" onclick="previewImport('teacher')" id="btn-preview-import">Preview Data</button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-secondary" onclick="previewImport('teacher')" id="btn-preview-import">Preview Data</button>
+                    <button class="btn btn-secondary" onclick="downloadTemplate('teacher')" style="background:var(--bg-600);">📄 Download Template</button>
+                </div>
                 
                 <div id="import-preview-section" style="display:none; margin-top:20px;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
@@ -453,12 +456,19 @@
             formData.append('file', fileInput.files[0]);
 
             try {
-                const res = await fetch(`/api/data/import/${role}/preview`, {
+                const res = await fetch(`${API_BASE || '/api'}/data/import/${role}/preview`, {
                     method: 'POST',
                     headers: { 'Authorization': 'Bearer ' + getToken() },
                     body: formData
                 });
-                const data = await res.json();
+                
+                let data;
+                try {
+                    data = await res.json();
+                } catch (parseErr) {
+                    throw new Error('Server returned an invalid response. The file might be too large or the server encountered an error.');
+                }
+                
                 if(!res.ok) throw new Error(data.error || 'Preview failed');
 
                 pendingImportRecords = data.preview.filter(r => r.isValid).map(r => r.mapped);
@@ -513,6 +523,18 @@
                 toast(err.message, 'error');
                 btn.disabled = false; btn.textContent = 'Confirm Import';
             }
+        }
+        
+        function downloadTemplate(role) {
+            let headers = "Full Name,Phone,Email,Address,Subject,Salary,Joining Date\n";
+            headers += "Alice Smith,03001234567,alice@example.com,456 Teacher St,Mathematics,45000,2024-01-15\n";
+            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + headers);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `${role}_import_template.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
         }
     </script>
 </body>

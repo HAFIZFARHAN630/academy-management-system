@@ -270,6 +270,9 @@
         canvas.getContext("2d").scale(ratio, ratio);
     }
     window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("load", resizeCanvas);
+    // Fallback if load is already fired
+    setTimeout(resizeCanvas, 300);
     resizeCanvas();
     const signaturePad = new SignaturePad(canvas, {
         backgroundColor: 'rgb(255, 255, 255)'
