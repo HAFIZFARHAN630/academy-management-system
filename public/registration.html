@@ -236,7 +236,7 @@
         <h3>5. Digital Signature *</h3>
         <p class="text-sm text-muted" style="margin-bottom: 10px;">Please sign below to verify and submit this form.</p>
         <div class="signature-wrapper">
-          <canvas id="signature-pad" class="signature-pad"></canvas>
+          <canvas id="signature-pad" class="signature-pad" style="border: 1px dashed #ccc;"></canvas>
         </div>
         <div class="signature-controls">
           <button type="button" class="btn btn-secondary btn-sm" onclick="signaturePad.clear()">Clear Signature</button>
@@ -322,7 +322,11 @@
       };
 
       try {
-        const res = await fetch(`${API_BASE || '/api'}/registrations`, {
+        const apiUrl = `${API_BASE || '/api'}/registrations`;
+        console.log('Submitting to:', apiUrl);
+        console.log('Payload size:', JSON.stringify(payload).length);
+
+        const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)

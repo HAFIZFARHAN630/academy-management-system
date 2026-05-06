@@ -33,7 +33,10 @@ function generateTempPassword() {
 // POST /api/registrations (Public Submission)
 router.post('/', async (req, res) => {
     try {
+        console.log('[REGISTRATION] Received POST /api/registrations');
         const { student_details, parent_details, health_details, payment_method, gdpr_consent, signature } = req.body;
+        console.log('[REGISTRATION] Student:', student_details?.full_name);
+        console.log('[REGISTRATION] Signature Length:', signature?.length || 0);
         
         if (!student_details || !student_details.full_name) {
             return res.status(400).json({ error: 'Student full name is required' });
