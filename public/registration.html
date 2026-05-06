@@ -77,11 +77,12 @@
       padding: 40px 20px;
     }
     .signature-wrapper {
-      border: 1px solid var(--border-subtle);
+      border: 2px solid var(--color-primary);
       border-radius: var(--radius-md);
       background: #fff;
       margin-bottom: 10px;
       overflow: hidden;
+      min-height: 200px;
     }
     .signature-pad {
       width: 100%;
@@ -265,8 +266,10 @@
     const canvas = document.getElementById('signature-pad');
     function resizeCanvas() {
         const ratio =  Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio;
-        canvas.height = canvas.offsetHeight * ratio;
+        const w = canvas.offsetWidth || 700; 
+        const h = canvas.offsetHeight || 200;
+        canvas.width = w * ratio;
+        canvas.height = h * ratio;
         canvas.getContext("2d").scale(ratio, ratio);
     }
     window.addEventListener("resize", resizeCanvas);
