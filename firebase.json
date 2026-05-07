@@ -17,8 +17,8 @@
       }
     ],
     "rewrites": [
-      { "source": "/calendar",          "destination": "/admin/calendar.html" },
       { "source": "/registration.html", "destination": "/registration.html" },
+      { "source": "/calendar",          "destination": "/admin/calendar.html" },
       { "source": "**",                "destination": "/index.html" }
     ]
   }
