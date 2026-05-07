@@ -12,211 +12,273 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="/js/signature_pad.umd.min.js?v=2.6.0"></script>
   <style>
-    body { font-family: 'Inter', sans-serif; }
+    body { font-family: 'Inter', sans-serif; background: #0A0B1E; color: #FFFFFF; }
     .page-bg { 
-      background: linear-gradient(rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.9)), url('/images/academy-bg.png');
-      background-size: cover;
-      background-position: center;
+      position: relative;
+      background:
+        radial-gradient(ellipse 70% 50% at 15% 15%, rgba(108, 99, 255, 0.2) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 85% 80%, rgba(0, 210, 211, 0.15) 0%, transparent 55%),
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(247, 183, 49, 0.06) 0%, transparent 50%),
+        #0A0B1E;
       background-attachment: fixed;
     }
-    .glass-container {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+    .hero-grid {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
     }
-    .signature-canvas { touch-action: none; cursor: crosshair; }
-    input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #3b82f6; }
+    .glass-container {
+      background: rgba(15, 16, 36, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      z-index: 1;
+    }
+    .section-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1rem;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    .section-card:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    .section-header {
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .input-field {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #FFFFFF;
+      transition: all 0.2s ease;
+    }
+    .input-field:focus {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: #6C63FF;
+      box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.2);
+    }
+    .signature-canvas { touch-action: none; cursor: crosshair; background: rgba(255, 255, 255, 0.9); }
   </style>
 </head>
 <body class="page-bg min-h-screen py-6 sm:py-12 px-2 sm:px-6 lg:px-8">
+  <div class="hero-grid"></div>
   <div class="max-w-4xl mx-auto">
     <!-- Header -->
     <div class="text-center mb-10">
       <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-xl mb-4 text-2xl font-bold">SL</div>
-      <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Students Learning & Skills Academy</h1>
-      <p class="mt-2 text-slate-600 font-medium">Official Admission & Registration Form</p>
+      <h1 class="text-3xl font-extrabold text-white tracking-tight">Students Learning & Skills Academy</h1>
+      <p class="mt-2 text-slate-400 font-medium">Official Admission & Registration Form</p>
     </div>
 
     <form id="registration-form" onsubmit="submitRegistration(event)" class="space-y-6 sm:space-y-8 glass-container p-4 sm:p-8 rounded-2xl shadow-xl">
       
       <!-- 1. Student Information -->
-      <section class="bg-white/40 shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
-        <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
-          <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+      <section class="section-card">
+        <div class="section-header px-6 py-4">
+          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">1</span>
             Student Information
           </h2>
         </div>
         <div class="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-fname">First Name *</label>
-            <input type="text" id="stu-fname" name="stu-fname" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="stu-fname">First Name *</label>
+            <input type="text" id="stu-fname" name="stu-fname" required class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-lname">Second Name *</label>
-            <input type="text" id="stu-lname" name="stu-lname" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="stu-lname">Second Name *</label>
+            <input type="text" id="stu-lname" name="stu-lname" required class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-gender">Gender *</label>
-            <select id="stu-gender" name="stu-gender" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="stu-gender">Gender *</label>
+            <select id="stu-gender" name="stu-gender" required class="input-field w-full px-4 py-2 rounded-lg transition-all">
               <option value="">Select Gender</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-dob">Date of Birth *</label>
-            <input type="date" id="stu-dob" name="stu-dob" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="stu-dob">Date of Birth *</label>
+            <input type="date" id="stu-dob" name="stu-dob" required class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-age">Age in Years</label>
-            <input type="number" id="stu-age" name="stu-age" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="stu-age">Age in Years</label>
+            <input type="number" id="stu-age" name="stu-age" class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-class">Class *</label>
-            <input type="text" id="stu-class" name="stu-class" required placeholder="e.g. Year 7" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="stu-class">Class *</label>
+            <input type="text" id="stu-class" name="stu-class" required placeholder="e.g. Year 7" class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-school">Current School</label>
-            <input type="text" id="stu-school" name="stu-school" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="stu-school">Current School</label>
+            <input type="text" id="stu-school" name="stu-school" class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-ethnic">Ethnic Origin</label>
-            <input type="text" id="stu-ethnic" name="stu-ethnic" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="stu-ethnic">Ethnic Origin</label>
+            <input type="text" id="stu-ethnic" name="stu-ethnic" class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-address">Home Address *</label>
-            <textarea id="stu-address" name="stu-address" required rows="2" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"></textarea>
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="stu-address">Home Address *</label>
+            <textarea id="stu-address" name="stu-address" required rows="2" class="input-field w-full px-4 py-2 rounded-lg transition-all"></textarea>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-postcode">Post Code *</label>
-            <input type="text" id="stu-postcode" name="stu-postcode" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="stu-postcode">Post Code *</label>
+            <input type="text" id="stu-postcode" name="stu-postcode" required class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
         </div>
       </section>
 
       <!-- 2. Parent/Guardian Details -->
-      <section class="bg-white/40 shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
-        <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
-          <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+      <section class="section-card">
+        <div class="section-header px-6 py-4">
+          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">2</span>
             Parent/Guardian Details
           </h2>
         </div>
         <div class="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="parent-name">Father/Mother Name *</label>
-            <input type="text" id="parent-name" name="parent-name" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="parent-name">Father/Mother Name *</label>
+            <input type="text" id="parent-name" name="parent-name" required class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="parent-job">Occupation</label>
-            <input type="text" id="parent-job" name="parent-job" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="parent-job">Occupation</label>
+            <input type="text" id="parent-job" name="parent-job" class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="parent-phone">Contact Telephone *</label>
-            <input type="tel" id="parent-phone" name="parent-phone" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="parent-phone">Contact Telephone *</label>
+            <input type="tel" id="parent-phone" name="parent-phone" required class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="parent-email">Email Address *</label>
-            <input type="email" id="parent-email" name="parent-email" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Enter in CAPITAL LETTERS">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="parent-email">Email Address *</label>
+            <input type="email" id="parent-email" name="parent-email" required class="input-field w-full px-4 py-2 rounded-lg transition-all" placeholder="Enter in CAPITAL LETTERS">
             <p class="mt-1 text-xs text-slate-500">Please enter in CAPITAL LETTERS</p>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="emergency-name">Emergency Contact Name *</label>
-            <input type="text" id="emergency-name" name="emergency-name" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="emergency-name">Emergency Contact Name *</label>
+            <input type="text" id="emergency-name" name="emergency-name" required class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="emergency-phone">Emergency Number *</label>
-            <input type="tel" id="emergency-phone" name="emergency-phone" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="emergency-phone">Emergency Number *</label>
+            <input type="tel" id="emergency-phone" name="emergency-phone" required class="input-field w-full px-4 py-2 rounded-lg transition-all">
           </div>
         </div>
       </section>
 
       <!-- 3. Learning & Support -->
-      <section class="bg-white/40 shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
-        <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
-          <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+      <section class="section-card">
+        <div class="section-header px-6 py-4">
+          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">3</span>
             Learning & Support
           </h2>
         </div>
         <div class="p-6 space-y-4">
-          <p class="text-sm text-slate-700">Does your child have a disability, health issues or barrier to learning that may affect his/her study? *</p>
+          <p class="text-sm text-slate-400">Does your child have a disability, health issues or barrier to learning that may affect his/her study? *</p>
           <div class="flex gap-6">
             <label class="inline-flex items-center">
               <input type="radio" name="health-has" value="yes" class="w-4 h-4 text-blue-600" onclick="document.getElementById('health-details-container').classList.remove('hidden')">
-              <span class="ml-2 text-sm text-slate-700">Yes</span>
+              <span class="ml-2 text-sm text-slate-300">Yes</span>
             </label>
             <label class="inline-flex items-center">
               <input type="radio" name="health-has" value="no" checked class="w-4 h-4 text-blue-600" onclick="document.getElementById('health-details-container').classList.add('hidden')">
-              <span class="ml-2 text-sm text-slate-700">No</span>
+              <span class="ml-2 text-sm text-slate-300">No</span>
             </label>
           </div>
           <div id="health-details-container" class="hidden">
-            <label class="block text-sm font-medium text-slate-700 mb-1" for="health-details">If yes, please describe:</label>
-            <textarea id="health-details" name="health-details" rows="3" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"></textarea>
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="health-details">If yes, please describe:</label>
+            <textarea id="health-details" name="health-details" rows="3" class="input-field w-full px-4 py-2 rounded-lg transition-all"></textarea>
           </div>
         </div>
       </section>
 
-      <!-- 4. Payment Section -->
-      <section class="bg-blue-50 border border-blue-200 rounded-2xl overflow-hidden">
+      <!-- 4. Emergency & Medical -->
+      <section class="section-card">
+        <div class="section-header px-6 py-4">
+          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">4</span>
+            Emergency & Medical
+          </h2>
+        </div>
+        <div class="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="medical-info">Known Medical Conditions</label>
+            <input type="text" id="medical-info" name="medical-info" placeholder="e.g. Asthma, Allergies" class="input-field w-full px-4 py-2 rounded-lg transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-1" for="doctor-phone">GP/Doctor Phone</label>
+            <input type="tel" id="doctor-phone" name="doctor-phone" class="input-field w-full px-4 py-2 rounded-lg transition-all">
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. Payment Section -->
+      <section class="bg-blue-900/20 border border-blue-500/30 rounded-2xl overflow-hidden">
         <div class="px-6 py-4 bg-blue-600 text-white">
           <h2 class="text-lg font-semibold flex items-center gap-2">
-            <span class="w-7 h-7 bg-white text-blue-600 rounded-full flex items-center justify-center text-sm">4</span>
+            <span class="w-7 h-7 bg-white text-blue-600 rounded-full flex items-center justify-center text-sm">5</span>
             Payment Section (£25 Registration Fee)
           </h2>
         </div>
         <div class="p-6">
-          <div class="bg-white p-4 rounded-xl border border-blue-100 mb-6 text-sm text-slate-700 leading-relaxed">
-            <strong class="text-blue-700">Important:</strong> Send your payment now, tuition is due before the class begins. 
-            Please make Cheque or Bankers' Order payable to <span class="font-bold">SLASA LTD</span>.
+          <div class="bg-white/5 p-4 rounded-xl border border-white/10 mb-6 text-sm text-slate-300 leading-relaxed">
+            <strong class="text-blue-400">Important:</strong> Send your payment now, tuition is due before the class begins. 
+            Please make Cheque or Bankers' Order payable to <span class="font-bold text-white">SLASA LTD</span>.
           </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label class="relative flex items-start p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-all">
+            <label class="relative flex items-start p-4 rounded-xl border border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 transition-all">
               <div class="flex items-center h-5">
                 <input type="radio" name="payment-method" id="pay-cheque" value="Cheque" class="w-4 h-4 text-blue-600">
               </div>
               <div class="ml-3">
-                <span class="block text-sm font-semibold text-slate-800">Cheque</span>
+                <span class="block text-sm font-semibold text-white">Cheque</span>
               </div>
             </label>
-            <label class="relative flex items-start p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-all">
+            <label class="relative flex items-start p-4 rounded-xl border border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 transition-all">
               <div class="flex items-center h-5">
                 <input type="radio" name="payment-method" id="pay-cash" value="Cash" class="w-4 h-4 text-blue-600">
               </div>
               <div class="ml-3">
-                <span class="block text-sm font-semibold text-slate-800">Cash</span>
+                <span class="block text-sm font-semibold text-white">Cash</span>
               </div>
             </label>
-            <label class="relative flex items-start p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-all md:col-span-1">
+            <label class="relative flex items-start p-4 rounded-xl border border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 transition-all">
               <div class="flex items-center h-5">
                 <input type="radio" name="payment-method" id="pay-bank" value="Bank Transfer" class="w-4 h-4 text-blue-600">
               </div>
               <div class="ml-3">
-                <span class="block text-sm font-semibold text-slate-800">Bank Transfer</span>
-                <span class="block text-xs text-slate-500 mt-1">Bank: Natwest | Acc Name: SLASA LTD</span>
+                <span class="block text-sm font-semibold text-white">Bank Transfer</span>
+                <span class="block text-xs text-slate-400 mt-1">Bank: Natwest | Acc Name: SLASA LTD</span>
               </div>
             </label>
-            <label class="relative flex items-start p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-all md:col-span-1">
+            <label class="relative flex items-start p-4 rounded-xl border border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 transition-all">
               <div class="flex items-center h-5">
                 <input type="radio" name="payment-method" id="pay-standing" value="Standing Order" class="w-4 h-4 text-blue-600">
               </div>
               <div class="ml-3">
-                <span class="block text-sm font-semibold text-slate-800">Standing Order</span>
-                <span class="block text-xs text-slate-500 mt-1">Sort Code: 60-80-09 | Acc: 67439578</span>
+                <span class="block text-sm font-semibold text-white">Standing Order</span>
+                <span class="block text-xs text-slate-400 mt-1">Sort Code: 60-80-09 | Acc: 67439578</span>
               </div>
             </label>
           </div>
         </div>
       </section>
 
-      <!-- 5. GDPR & Consent -->
-      <section class="bg-white/40 shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
-        <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
-          <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
-            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">5</span>
+      <!-- 6. GDPR & Consent -->
+      <section class="section-card">
+        <div class="section-header px-6 py-4">
+          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">6</span>
             GDPR & Consent
           </h2>
         </div>
@@ -226,10 +288,10 @@
               <input type="checkbox" id="gdpr-consent" name="gdpr-consent" required class="w-4 h-4 text-blue-600 rounded">
             </div>
             <div class="ml-3 text-sm">
-              <label for="gdpr-consent" class="text-slate-700 leading-relaxed">
+              <label for="gdpr-consent" class="text-slate-300 leading-relaxed">
                 I consent to the Academy taking photographs and videos of my child for educational and promotional purposes. 
-                I also agree to the <a href="/privacy" class="text-blue-600 underline">Privacy Policy</a> and 
-                <a href="/terms" class="text-blue-600 underline">Terms & Conditions</a> regarding the storage and processing 
+                I also agree to the <a href="/privacy" class="text-blue-500 underline">Privacy Policy</a> and 
+                <a href="/terms" class="text-blue-500 underline">Terms & Conditions</a> regarding the storage and processing 
                 of the data provided in this form.
               </label>
             </div>
@@ -237,10 +299,10 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
             <div class="space-y-2">
-              <label class="block text-sm font-medium text-slate-700">Digital Signature *</label>
-              <div class="relative bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden h-40">
+              <label class="block text-sm font-medium text-slate-300">Digital Signature *</label>
+              <div class="relative bg-white/5 border-2 border-dashed border-white/20 rounded-xl overflow-hidden h-40">
                 <canvas id="signature-pad" class="signature-canvas w-full h-full"></canvas>
-                <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 text-slate-400 font-medium uppercase tracking-widest text-xs">
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 text-white font-medium uppercase tracking-widest text-xs">
                   Draw Signature Here
                 </div>
               </div>
@@ -248,11 +310,11 @@
             </div>
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1" for="print-name">Print Name</label>
-                <input type="text" id="print-name" name="print-name" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+                <label class="block text-sm font-medium text-slate-300 mb-1" for="print-name">Print Name</label>
+                <input type="text" id="print-name" name="print-name" class="input-field w-full px-4 py-2 rounded-lg transition-all">
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1" for="reg-date">Date</label>
+                <label class="block text-sm font-medium text-slate-300 mb-1" for="reg-date">Date</label>
                 <input type="text" id="reg-date" name="reg-date" readonly class="w-full px-4 py-2 rounded-lg border border-slate-100 bg-slate-50 text-slate-500 cursor-not-allowed">
               </div>
             </div>
@@ -260,39 +322,39 @@
         </div>
       </section>
 
-      <!-- 6. Official Use Only -->
-      <section class="border-4 border-dashed border-slate-200 rounded-2xl p-4 sm:p-8 bg-slate-50/50">
+      <!-- 7. Official Use Only -->
+      <section class="border-4 border-dashed border-white/10 rounded-2xl p-4 sm:p-8 bg-white/5">
         <div class="text-center mb-6">
-          <span class="inline-block px-4 py-1 bg-slate-200 text-slate-600 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full">Official Use Only</span>
+          <span class="inline-block px-4 py-1 bg-white/10 text-white/60 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full">Official Use Only</span>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div class="space-y-1">
-            <div class="h-10 border-b border-slate-300"></div>
-            <p class="text-[10px] text-slate-400 uppercase font-bold">Registered By (Name)</p>
+            <div class="h-10 border-b border-white/20"></div>
+            <p class="text-[10px] text-white/40 uppercase font-bold">Registered By (Name)</p>
           </div>
           <div class="space-y-1">
-            <div class="h-10 border-b border-slate-300"></div>
-            <p class="text-[10px] text-slate-400 uppercase font-bold">Date</p>
+            <div class="h-10 border-b border-white/20"></div>
+            <p class="text-[10px] text-white/40 uppercase font-bold">Date</p>
           </div>
           <div class="space-y-1">
-            <div class="h-10 border-b border-slate-300"></div>
-            <p class="text-[10px] text-slate-400 uppercase font-bold">Signature</p>
+            <div class="h-10 border-b border-white/20"></div>
+            <p class="text-[10px] text-white/40 uppercase font-bold">Signature</p>
           </div>
         </div>
       </section>
 
       <!-- Submit Footer -->
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-6 pt-6 border-t border-slate-200">
-        <a href="/" class="text-sm text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-2">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-6 pt-6 border-t border-white/10">
+        <a href="/" class="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2">
           ← Return to Homepage
         </a>
-        <button type="submit" id="submit-btn" class="w-full sm:w-auto px-10 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 active:scale-95 transition-all">
+        <button type="submit" id="submit-btn" class="w-full sm:w-auto px-10 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-700 hover:shadow-blue-900/40 active:scale-95 transition-all">
           Submit Application
         </button>
       </div>
     </form>
     
-    <div class="mt-12 text-center text-[10px] text-slate-400 uppercase tracking-widest">
+    <div class="mt-12 text-center text-[10px] text-white/20 uppercase tracking-widest">
       &copy; 2026 Students Learning & Skills Academy (SLASA LTD) | v2.6.2
     </div>
   </div>
