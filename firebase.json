@@ -10,10 +10,6 @@
       {
         "source": "/calendar",
         "destination": "/admin/calendar.html"
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
       }
     ]
   }
