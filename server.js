@@ -134,7 +134,7 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
-        version: '2.6.1',
+        version: '2.6.2',
         db: 'sqlite',
         supabase_connected: !!process.env.SUPABASE_URL,
         env: process.env.NODE_ENV || 'production'
@@ -142,7 +142,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`\n🎓 Academy Management System v2.6.1 running at http://localhost:${PORT}`);
+    console.log(`\n🎓 Academy Management System v2.6.2 running at http://localhost:${PORT}`);
     console.log(`   CWD: ${process.cwd()}`);
     console.log(`   Dirname: ${__dirname}`);
     try {
