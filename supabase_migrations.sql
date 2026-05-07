@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.pending_registrations (
     health_details JSONB,
     payment_method TEXT,
     gdpr_consent BOOLEAN DEFAULT false,
+    signature TEXT,
     status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
     admin_notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -59,7 +60,8 @@ CREATE POLICY "Allow authenticated full access" ON public.privacy_policies
 
 -- 3. Modify Users Table
 ALTER TABLE public.users 
-ADD COLUMN IF NOT EXISTS privacy_consent_version INTEGER DEFAULT 0;
+ADD COLUMN IF NOT EXISTS privacy_consent_version INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS signature TEXT;
 
 -- 4. Audit Log Helper (if not exists)
 -- Assuming audit_log table exists, we just need to ensure it's there.
