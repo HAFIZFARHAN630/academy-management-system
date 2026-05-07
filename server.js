@@ -124,6 +124,16 @@ app.get('/', (req, res) => {
     });
 });
 
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        version: '2.4.0',
+        db: 'sqlite',
+        supabase_connected: !!process.env.SUPABASE_URL,
+        env: process.env.NODE_ENV || 'production'
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`\n🎓 Academy Management System running at http://localhost:${PORT}`);
     console.log(`   Built by ClickTake Technologies | clicktaketech.com\n`);
