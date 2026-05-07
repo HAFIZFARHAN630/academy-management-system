@@ -134,7 +134,7 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
-        version: '2.6.0',
+        version: '2.6.1',
         db: 'sqlite',
         supabase_connected: !!process.env.SUPABASE_URL,
         env: process.env.NODE_ENV || 'production'
@@ -142,6 +142,14 @@ app.get('/api/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`\n🎓 Academy Management System running at http://localhost:${PORT}`);
+    console.log(`\n🎓 Academy Management System v2.6.1 running at http://localhost:${PORT}`);
+    console.log(`   CWD: ${process.cwd()}`);
+    console.log(`   Dirname: ${__dirname}`);
+    try {
+        const fs = require('fs');
+        console.log(`   Public Contents: ${fs.readdirSync(path.join(__dirname, 'public'))}`);
+        const regFile = fs.readFileSync(path.join(__dirname, 'public/registration.html'), 'utf8');
+        console.log(`   Registration.html Length: ${regFile.length}`);
+    } catch(e) { console.error('Dir check failed', e); }
     console.log(`   Built by ClickTake Technologies | clicktaketech.com\n`);
 });
