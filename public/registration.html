@@ -3,367 +3,398 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Student Registration — ClickTake Academy</title>
-  <link rel="stylesheet" href="/css/design-system.css">
-  <link rel="stylesheet" href="/css/components.css">
-  <style>
-    body {
-      background: var(--bg-900);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: var(--space-8) var(--space-4);
-    }
-    .form-container {
-      width: 100%;
-      max-width: 800px;
-      background: var(--bg-700);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-xl);
-      padding: var(--space-8);
-      box-shadow: var(--shadow-xl);
-    }
-    .form-header {
-      text-align: center;
-      margin-bottom: var(--space-8);
-    }
-    .form-header h2 {
-      font-family: var(--font-display);
-      margin-bottom: 8px;
-    }
-    .form-section {
-      background: var(--bg-600);
-      border-radius: var(--radius-lg);
-      padding: var(--space-6);
-      margin-bottom: var(--space-6);
-      border: 1px solid var(--border-subtle);
-    }
-    .form-section h3 {
-      margin-bottom: var(--space-4);
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border-subtle);
-      color: var(--color-primary-light);
-    }
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-4);
-    }
-    @media (max-width: 600px) {
-      .form-grid { grid-template-columns: 1fr; }
-    }
-    .gdpr-box {
-      background: rgba(247, 183, 49, 0.1);
-      border: 1px solid rgba(247, 183, 49, 0.3);
-      padding: var(--space-4);
-      border-radius: var(--radius-md);
-      margin-bottom: var(--space-6);
-    }
-    .gdpr-box label {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      cursor: pointer;
-    }
-    .submit-btn {
-      width: 100%;
-      padding: 16px;
-      font-size: 1.1rem;
-    }
-    .success-view {
-      display: none;
-      text-align: center;
-      padding: 40px 20px;
-    }
-    .signature-wrapper {
-      border: 3px solid var(--color-primary);
-      border-radius: var(--radius-md);
-      background: #ffffff;
-      margin-bottom: 10px;
-      overflow: hidden;
-      height: 220px;
-      position: relative;
-    }
-    .signature-pad {
-      width: 100%;
-      height: 200px;
-      cursor: crosshair;
-      touch-action: none;
-    }
-    .signature-controls {
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: var(--space-6);
-    }
-  </style>
+  <title>Student Registration — SLASA Academy</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="/js/signature_pad.umd.min.js?v=2.4.0"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); }
+    .signature-canvas { touch-action: none; cursor: crosshair; }
+    input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #3b82f6; }
+  </style>
 </head>
-<body class="gradient-mesh">
-  
-  <div class="form-container" id="reg-form-container">
-    <div class="form-header">
-      <h2>🎓 Academy Registration</h2>
-      <p class="text-muted">Fill out the form below to apply for admission.</p>
+<body class="gradient-bg min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+
+  <div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-xl mb-4 text-2xl font-bold">SL</div>
+      <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Students Learning & Skills Academy</h1>
+      <p class="mt-2 text-slate-600 font-medium">Official Admission & Registration Form</p>
     </div>
 
-    <form id="registration-form" onsubmit="submitRegistration(event)">
+    <form id="registration-form" onsubmit="submitRegistration(event)" class="space-y-8">
       
-      <!-- Student Details -->
-      <div class="form-section">
-        <h3>1. Student Details</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">First Name *</label>
-            <input type="text" id="stu-fname" class="form-control" required>
+      <!-- 1. Student Information -->
+      <section class="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
+          <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">1</span>
+            Student Information
+          </h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-fname">First Name *</label>
+            <input type="text" id="stu-fname" name="stu-fname" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
           </div>
-          <div class="form-group">
-            <label class="form-label">Surname *</label>
-            <input type="text" id="stu-lname" class="form-control" required>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-lname">Second Name *</label>
+            <input type="text" id="stu-lname" name="stu-lname" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
           </div>
-          <div class="form-group">
-            <label class="form-label">Date of Birth *</label>
-            <input type="date" id="stu-dob" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Gender *</label>
-            <select id="stu-gender" class="form-control" required>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-gender">Gender *</label>
+            <select id="stu-gender" name="stu-gender" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
               <option value="">Select Gender</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
-              <option value="Other">Other</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label">Target Class/Year *</label>
-            <input type="text" id="stu-class" class="form-control" required placeholder="e.g. Year 5">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Current School</label>
-            <input type="text" id="stu-school" class="form-control">
-          </div>
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label class="form-label">Home Address *</label>
-            <input type="text" id="stu-address" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Postcode *</label>
-            <input type="text" id="stu-postcode" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Ethnic Origin</label>
-            <input type="text" id="stu-ethnic" class="form-control">
-          </div>
-        </div>
-      </div>
-
-      <!-- Parent / Guardian -->
-      <div class="form-section">
-        <h3>2. Parent/Guardian Details</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Full Name *</label>
-            <input type="text" id="parent-name" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Relationship to Student</label>
-            <input type="text" id="parent-relation" class="form-control">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Contact Number *</label>
-            <input type="tel" id="parent-phone" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Email Address *</label>
-            <input type="email" id="parent-email" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Occupation</label>
-            <input type="text" id="parent-job" class="form-control">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Emergency Contact (If different) *</label>
-            <input type="tel" id="emergency-phone" class="form-control" required>
-          </div>
-        </div>
-      </div>
-
-      <!-- Health & Learning -->
-      <div class="form-section">
-        <h3>3. Learning & Health Needs</h3>
-        <div class="form-group">
-          <label class="form-label">Does the student have any disabilities, learning difficulties, or medical conditions? *</label>
-          <div style="margin-bottom: 10px;">
-            <label style="margin-right:20px;"><input type="radio" name="health-has" value="yes" onclick="document.getElementById('health-details-group').style.display='block'"> Yes</label>
-            <label><input type="radio" name="health-has" value="no" checked onclick="document.getElementById('health-details-group').style.display='none'"> No</label>
-          </div>
-        </div>
-        <div class="form-group" id="health-details-group" style="display:none;">
-          <label class="form-label">Please provide details:</label>
-          <textarea id="health-details" class="form-control" rows="3"></textarea>
-        </div>
-      </div>
-
-      <!-- Payment -->
-      <div class="form-section">
-        <h3>4. Registration Fee</h3>
-        <p class="text-sm text-muted" style="margin-bottom: 10px;">A £25 Registration Fee is required to process the application.</p>
-        <div class="form-group">
-          <label class="form-label">Select Payment Method *</label>
-          <select id="payment-method" class="form-control" required>
-            <option value="">Select Option</option>
-            <option value="Cash">Cash (Pay at Reception)</option>
-            <option value="Bank Transfer">Bank Transfer</option>
-            <option value="Cheque">Cheque</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- GDPR -->
-      <div class="gdpr-box">
-        <label>
-          <input type="checkbox" id="gdpr-consent" required style="margin-top:4px;">
           <div>
-            <strong>Photo/Video Consent & Data Privacy Policy *</strong>
-            <p class="text-sm" style="color:var(--text-secondary); margin-top:4px;">
-              I consent to the Academy taking photographs and videos of my child for educational and promotional purposes. I also agree to the <a href="/privacy.html" target="_blank" style="color:var(--color-primary-light);">Privacy Policy</a> and <a href="#" target="_blank" style="color:var(--color-primary-light);">Terms & Conditions</a> regarding the storage and processing of the data provided in this form.
-            </p>
-            <strong style="display:block; margin-top: 8px; color: var(--color-primary-light);">I accept</strong>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-dob">Date of Birth *</label>
+            <input type="date" id="stu-dob" name="stu-dob" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
           </div>
-        </label>
-      </div>
-
-      <!-- Digital Signature -->
-      <div class="form-section">
-        <h3>5. Digital Signature *</h3>
-        <p class="text-sm text-muted" style="margin-bottom: 10px;">Please sign below to verify and submit this form.</p>
-        <div class="signature-wrapper">
-          <canvas id="signature-pad" class="signature-pad" width="600" height="200" style="border: 1px dashed #ccc; width: 100%; height: 200px;"></canvas>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-age">Age in Years</label>
+            <input type="number" id="stu-age" name="stu-age" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-class">Class *</label>
+            <input type="text" id="stu-class" name="stu-class" required placeholder="e.g. Year 7" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-school">Current School</label>
+            <input type="text" id="stu-school" name="stu-school" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-ethnic">Ethnic Origin</label>
+            <input type="text" id="stu-ethnic" name="stu-ethnic" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-address">Home Address *</label>
+            <textarea id="stu-address" name="stu-address" required rows="2" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="stu-postcode">Post Code *</label>
+            <input type="text" id="stu-postcode" name="stu-postcode" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+          </div>
         </div>
-        <div class="signature-controls">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="signaturePad.clear()">Clear Signature</button>
-        </div>
-      </div>
+      </section>
 
-      <button type="submit" class="btn btn-primary submit-btn" id="submit-btn">Submit Application</button>
-      <div style="text-align: center; margin-top: 15px;">
-        <a href="/" style="color:var(--text-muted); font-size: 0.9rem;">← Back to Home</a>
+      <!-- 2. Parent/Guardian Details -->
+      <section class="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
+          <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">2</span>
+            Parent/Guardian Details
+          </h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="parent-name">Father/Mother Name *</label>
+            <input type="text" id="parent-name" name="parent-name" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="parent-job">Occupation</label>
+            <input type="text" id="parent-job" name="parent-job" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="parent-phone">Contact Telephone *</label>
+            <input type="tel" id="parent-phone" name="parent-phone" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="parent-email">Email Address *</label>
+            <input type="email" id="parent-email" name="parent-email" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Enter in CAPITAL LETTERS">
+            <p class="mt-1 text-xs text-slate-500">Please enter in CAPITAL LETTERS</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="emergency-name">Emergency Contact Name *</label>
+            <input type="text" id="emergency-name" name="emergency-name" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="emergency-phone">Emergency Number *</label>
+            <input type="tel" id="emergency-phone" name="emergency-phone" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Learning & Support -->
+      <section class="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
+          <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">3</span>
+            Learning & Support
+          </h2>
+        </div>
+        <div class="p-6 space-y-4">
+          <p class="text-sm text-slate-700">Does your child have a disability, health issues or barrier to learning that may affect his/her study? *</p>
+          <div class="flex gap-6">
+            <label class="inline-flex items-center">
+              <input type="radio" name="health-has" value="yes" class="w-4 h-4 text-blue-600" onclick="document.getElementById('health-details-container').classList.remove('hidden')">
+              <span class="ml-2 text-sm text-slate-700">Yes</span>
+            </label>
+            <label class="inline-flex items-center">
+              <input type="radio" name="health-has" value="no" checked class="w-4 h-4 text-blue-600" onclick="document.getElementById('health-details-container').classList.add('hidden')">
+              <span class="ml-2 text-sm text-slate-700">No</span>
+            </label>
+          </div>
+          <div id="health-details-container" class="hidden">
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="health-details">If yes, please describe:</label>
+            <textarea id="health-details" name="health-details" rows="3" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Payment Section -->
+      <section class="bg-blue-50 border border-blue-200 rounded-2xl overflow-hidden">
+        <div class="px-6 py-4 bg-blue-600 text-white">
+          <h2 class="text-lg font-semibold flex items-center gap-2">
+            <span class="w-7 h-7 bg-white text-blue-600 rounded-full flex items-center justify-center text-sm">4</span>
+            Payment Section (£25 Registration Fee)
+          </h2>
+        </div>
+        <div class="p-6">
+          <div class="bg-white p-4 rounded-xl border border-blue-100 mb-6 text-sm text-slate-700 leading-relaxed">
+            <strong class="text-blue-700">Important:</strong> Send your payment now, tuition is due before the class begins. 
+            Please make Cheque or Bankers' Order payable to <span class="font-bold">SLASA LTD</span>.
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="relative flex items-start p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-all">
+              <div class="flex items-center h-5">
+                <input type="radio" name="payment-method" id="pay-cheque" value="Cheque" class="w-4 h-4 text-blue-600">
+              </div>
+              <div class="ml-3">
+                <span class="block text-sm font-semibold text-slate-800">Cheque</span>
+              </div>
+            </label>
+            <label class="relative flex items-start p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-all">
+              <div class="flex items-center h-5">
+                <input type="radio" name="payment-method" id="pay-cash" value="Cash" class="w-4 h-4 text-blue-600">
+              </div>
+              <div class="ml-3">
+                <span class="block text-sm font-semibold text-slate-800">Cash</span>
+              </div>
+            </label>
+            <label class="relative flex items-start p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-all md:col-span-1">
+              <div class="flex items-center h-5">
+                <input type="radio" name="payment-method" id="pay-bank" value="Bank Transfer" class="w-4 h-4 text-blue-600">
+              </div>
+              <div class="ml-3">
+                <span class="block text-sm font-semibold text-slate-800">Bank Transfer</span>
+                <span class="block text-xs text-slate-500 mt-1">Bank: Natwest | Acc Name: SLASA LTD</span>
+              </div>
+            </label>
+            <label class="relative flex items-start p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition-all md:col-span-1">
+              <div class="flex items-center h-5">
+                <input type="radio" name="payment-method" id="pay-standing" value="Standing Order" class="w-4 h-4 text-blue-600">
+              </div>
+              <div class="ml-3">
+                <span class="block text-sm font-semibold text-slate-800">Standing Order</span>
+                <span class="block text-xs text-slate-500 mt-1">Sort Code: 60-80-09 | Acc: 67439578</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. GDPR & Consent -->
+      <section class="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
+          <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">5</span>
+            GDPR & Consent
+          </h2>
+        </div>
+        <div class="p-6 space-y-6">
+          <div class="flex items-start">
+            <div class="flex items-center h-5">
+              <input type="checkbox" id="gdpr-consent" name="gdpr-consent" required class="w-4 h-4 text-blue-600 rounded">
+            </div>
+            <div class="ml-3 text-sm">
+              <label for="gdpr-consent" class="text-slate-700 leading-relaxed">
+                I consent to the Academy taking photographs and videos of my child for educational and promotional purposes. 
+                I also agree to the <a href="/privacy" class="text-blue-600 underline">Privacy Policy</a> and 
+                <a href="/terms" class="text-blue-600 underline">Terms & Conditions</a> regarding the storage and processing 
+                of the data provided in this form.
+              </label>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-slate-700">Digital Signature *</label>
+              <div class="relative bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden h-40">
+                <canvas id="signature-pad" class="signature-canvas w-full h-full"></canvas>
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 text-slate-400 font-medium uppercase tracking-widest text-xs">
+                  Draw Signature Here
+                </div>
+              </div>
+              <button type="button" onclick="signaturePad.clear()" class="text-xs text-slate-500 hover:text-red-500 transition-colors uppercase font-bold tracking-wider">Clear Signature</button>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1" for="print-name">Print Name</label>
+                <input type="text" id="print-name" name="print-name" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1" for="reg-date">Date</label>
+                <input type="text" id="reg-date" name="reg-date" readonly class="w-full px-4 py-2 rounded-lg border border-slate-100 bg-slate-50 text-slate-500 cursor-not-allowed">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. Official Use Only -->
+      <section class="border-4 border-dashed border-slate-200 rounded-2xl p-8 bg-slate-50/50">
+        <div class="text-center mb-6">
+          <span class="inline-block px-4 py-1 bg-slate-200 text-slate-600 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full">Official Use Only</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="space-y-1">
+            <div class="h-10 border-b border-slate-300"></div>
+            <p class="text-[10px] text-slate-400 uppercase font-bold">Registered By (Name)</p>
+          </div>
+          <div class="space-y-1">
+            <div class="h-10 border-b border-slate-300"></div>
+            <p class="text-[10px] text-slate-400 uppercase font-bold">Date</p>
+          </div>
+          <div class="space-y-1">
+            <div class="h-10 border-b border-slate-300"></div>
+            <p class="text-[10px] text-slate-400 uppercase font-bold">Signature</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Submit Footer -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-6 pt-6 border-t border-slate-200">
+        <a href="/" class="text-sm text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-2">
+          ← Return to Homepage
+        </a>
+        <button type="submit" id="submit-btn" class="w-full sm:w-auto px-10 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 active:scale-95 transition-all">
+          Submit Application
+        </button>
       </div>
     </form>
-    <div style="text-align: center; margin-top: 20px; font-size: 0.7rem; color: var(--text-muted);">
-        v2.4.0 | ClickTake Academy
+    
+    <div class="mt-12 text-center text-[10px] text-slate-400 uppercase tracking-widest">
+      &copy; 2026 Students Learning & Skills Academy (SLASA LTD) | v2.5.0
     </div>
   </div>
 
-  <div class="form-container success-view" id="success-view">
-    <div style="font-size: 4rem; margin-bottom: 20px;">✅</div>
-    <h2 style="font-family: var(--font-display);">Application Received!</h2>
-    <p style="color: var(--text-secondary); margin: 20px 0;">
-      Thank you for registering. Your application has been submitted to our administration team for review.<br>
-      You will receive an email or SMS notification once the account is approved and login credentials are generated.
-    </p>
-    <a href="/" class="btn btn-secondary">Return to Homepage</a>
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
+
+  <!-- Success Modal -->
+  <div id="success-view" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl p-10 max-w-lg w-full text-center">
+      <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">✓</div>
+      <h2 class="text-2xl font-bold text-slate-900 mb-4">Application Received!</h2>
+      <p class="text-slate-600 leading-relaxed mb-8">
+        Thank you for registering. Your application has been submitted to our administration team for review.<br>
+        We will contact you shortly regarding the next steps.
+      </p>
+      <a href="/" class="inline-block w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors">Return to Home</a>
+    </div>
   </div>
 
-  <div id="toast-container"></div>
   <script src="/js/api.js?v=2.4.0"></script>
   <script>
     const canvas = document.getElementById('signature-pad');
     let signaturePad;
+
     function initSignature() {
-        if (typeof SignaturePad === 'undefined') {
-            console.error('SignaturePad library not loaded!');
-            toast('Signature tool failed to load. Please refresh.', 'error');
-            return;
-        }
-        
-        signaturePad = new SignaturePad(canvas, {
-            backgroundColor: 'rgb(255, 255, 255)'
-        });
-        resizeCanvas();
+      if (typeof SignaturePad === 'undefined') return;
+      signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgb(255, 255, 255)' });
+      resizeCanvas();
     }
 
     function resizeCanvas() {
-        const ratio =  Math.max(window.devicePixelRatio || 1, 1);
-        const w = canvas.clientWidth || 600; 
-        const h = canvas.clientHeight || 200;
-        canvas.width = w * ratio;
-        canvas.height = h * ratio;
-        canvas.getContext("2d").scale(ratio, ratio);
-        if (signaturePad) signaturePad.clear(); // Clear to avoid distortions
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      canvas.width = canvas.offsetWidth * ratio;
+      canvas.height = canvas.offsetHeight * ratio;
+      canvas.getContext("2d").scale(ratio, ratio);
+      if (signaturePad) signaturePad.clear();
     }
+
     window.addEventListener("resize", resizeCanvas);
-    window.addEventListener("load", initSignature);
-    // Double-check initialization
-    setTimeout(() => {
-        if (!signaturePad) initSignature();
-        else resizeCanvas();
-    }, 1000);
+    window.onload = () => {
+      initSignature();
+      document.getElementById('reg-date').value = new Date().toLocaleDateString('en-GB');
+    };
 
     async function submitRegistration(e) {
       e.preventDefault();
       
       if (signaturePad.isEmpty()) {
-          toast('Please provide your digital signature.', 'error');
-          return;
+        toast('Digital signature is required.', 'error');
+        return;
       }
 
       const btn = document.getElementById('submit-btn');
       btn.disabled = true;
-      btn.innerHTML = 'Submitting...';
+      btn.innerHTML = 'Processing...';
 
       const healthCheck = document.querySelector('input[name="health-has"]:checked');
+      const paymentMethod = document.querySelector('input[name="payment-method"]:checked')?.value || 'Not Specified';
+
       const payload = {
         student_details: {
-          full_name: (document.getElementById('stu-fname')?.value || '').trim() + ' ' + (document.getElementById('stu-lname')?.value || '').trim(),
-          dob: document.getElementById('stu-dob')?.value,
-          gender: document.getElementById('stu-gender')?.value,
-          class_name: document.getElementById('stu-class')?.value,
-          current_school: document.getElementById('stu-school')?.value,
-          address: document.getElementById('stu-address')?.value,
-          postcode: document.getElementById('stu-postcode')?.value,
-          ethnic_origin: document.getElementById('stu-ethnic')?.value
+          full_name: `${document.getElementById('stu-fname').value} ${document.getElementById('stu-lname').value}`,
+          dob: document.getElementById('stu-dob').value,
+          age: document.getElementById('stu-age').value,
+          gender: document.getElementById('stu-gender').value,
+          class_name: document.getElementById('stu-class').value,
+          current_school: document.getElementById('stu-school').value,
+          ethnic_origin: document.getElementById('stu-ethnic').value,
+          address: document.getElementById('stu-address').value,
+          postcode: document.getElementById('stu-postcode').value
         },
         parent_details: {
-          full_name: document.getElementById('parent-name')?.value,
-          relation: document.getElementById('parent-relation')?.value,
-          phone: document.getElementById('parent-phone')?.value,
-          email: document.getElementById('parent-email')?.value,
-          occupation: document.getElementById('parent-job')?.value,
-          emergency_contact: document.getElementById('emergency-phone')?.value
+          full_name: document.getElementById('parent-name').value,
+          occupation: document.getElementById('parent-job').value,
+          phone: document.getElementById('parent-phone').value,
+          email: document.getElementById('parent-email').value,
+          emergency_name: document.getElementById('emergency-name').value,
+          emergency_contact: document.getElementById('emergency-phone').value
         },
         health_details: {
           has_condition: healthCheck ? healthCheck.value === 'yes' : false,
-          details: document.getElementById('health-details')?.value || ''
+          details: document.getElementById('health-details').value
         },
-        payment_method: document.getElementById('payment-method')?.value,
-        gdpr_consent: document.getElementById('gdpr-consent')?.checked || false,
-        signature: signaturePad ? signaturePad.toDataURL() : null
+        payment_method: paymentMethod,
+        gdpr_consent: document.getElementById('gdpr-consent').checked,
+        signature: signaturePad.toDataURL(),
+        print_name: document.getElementById('print-name').value,
+        reg_date: document.getElementById('reg-date').value
       };
 
       try {
-        const apiUrl = `${API_BASE || '/api'}/registrations`;
-        console.log('Submitting to:', apiUrl);
-        console.log('Payload size:', JSON.stringify(payload).length);
-
+        const apiUrl = (typeof API_BASE !== 'undefined' ? API_BASE : '/api') + '/registrations';
         const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-
-        const data = await res.json().catch(() => ({ error: 'Invalid server response' }));
+        const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Submission failed');
 
-        document.getElementById('reg-form-container').style.display = 'none';
-        document.getElementById('success-view').style.display = 'block';
-
+        document.getElementById('success-view').classList.remove('hidden');
+        window.scrollTo(0,0);
       } catch(err) {
-        console.error('Registration Error:', err);
-        toast(err.message || 'Failed to submit application. Please try again.', 'error');
+        toast(err.message, 'error');
         btn.disabled = false;
         btn.innerHTML = 'Submit Application';
       }
+    }
+
+    function toast(msg, type='info') {
+      const t = document.createElement('div');
+      t.className = `px-6 py-3 rounded-xl shadow-xl text-white text-sm font-bold animate-bounce ${type==='error'?'bg-red-500':'bg-slate-800'}`;
+      t.innerText = msg;
+      document.getElementById('toast-container').appendChild(t);
+      setTimeout(() => t.remove(), 4000);
     }
   </script>
 </body>

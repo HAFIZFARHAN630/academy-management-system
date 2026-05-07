@@ -129,6 +129,10 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="document.getElementById('import-modal').classList.remove('open')">Cancel</button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-secondary" onclick="previewImport('worker')" id="btn-preview-import">Preview Data</button>
+                    <button class="btn btn-secondary" onclick="downloadTemplate('worker')" style="background:var(--bg-600);">📄 Download Template</button>
+                </div>
                 <button class="btn btn-primary" id="btn-confirm-import" style="display:none;" onclick="confirmImport('worker')">Confirm Import</button>
             </div>
         </div>
