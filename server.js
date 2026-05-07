@@ -13,7 +13,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Serve static files from public directory
 app.use((req, res, next) => {
-    res.setHeader('X-System-Version', '2.5.0');
+    res.setHeader('X-System-Version', '2.6.0');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     next();
 });
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
@@ -131,7 +134,7 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
-        version: '2.5.0',
+        version: '2.6.0',
         db: 'sqlite',
         supabase_connected: !!process.env.SUPABASE_URL,
         env: process.env.NODE_ENV || 'production'
