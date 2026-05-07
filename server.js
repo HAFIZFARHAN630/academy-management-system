@@ -127,7 +127,7 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
-        version: '2.4.0',
+        version: '2.5.0',
         db: 'sqlite',
         supabase_connected: !!process.env.SUPABASE_URL,
         env: process.env.NODE_ENV || 'production'
