@@ -87,6 +87,7 @@
     .signature-pad {
       width: 100%;
       height: 200px;
+      cursor: crosshair;
       touch-action: none;
     }
     .signature-controls {
@@ -236,7 +237,7 @@
         <h3>5. Digital Signature *</h3>
         <p class="text-sm text-muted" style="margin-bottom: 10px;">Please sign below to verify and submit this form.</p>
         <div class="signature-wrapper">
-          <canvas id="signature-pad" class="signature-pad" style="border: 1px dashed #ccc;"></canvas>
+          <canvas id="signature-pad" class="signature-pad" width="600" height="200" style="border: 1px dashed #ccc; width: 100%; height: 200px;"></canvas>
         </div>
         <div class="signature-controls">
           <button type="button" class="btn btn-secondary btn-sm" onclick="signaturePad.clear()">Clear Signature</button>
@@ -267,22 +268,36 @@
   <script src="/js/api.js"></script>
   <script>
     const canvas = document.getElementById('signature-pad');
+    let signaturePad;
+    function initSignature() {
+        if (typeof SignaturePad === 'undefined') {
+            console.error('SignaturePad library not loaded!');
+            toast('Signature tool failed to load. Please refresh.', 'error');
+            return;
+        }
+        
+        signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255, 255, 255)'
+        });
+        resizeCanvas();
+    }
+
     function resizeCanvas() {
         const ratio =  Math.max(window.devicePixelRatio || 1, 1);
-        const w = canvas.offsetWidth || 700; 
-        const h = canvas.offsetHeight || 200;
+        const w = canvas.clientWidth || 600; 
+        const h = canvas.clientHeight || 200;
         canvas.width = w * ratio;
         canvas.height = h * ratio;
         canvas.getContext("2d").scale(ratio, ratio);
+        if (signaturePad) signaturePad.clear(); // Clear to avoid distortions
     }
     window.addEventListener("resize", resizeCanvas);
-    window.addEventListener("load", resizeCanvas);
-    // Fallback if load is already fired
-    setTimeout(resizeCanvas, 300);
-    resizeCanvas();
-    const signaturePad = new SignaturePad(canvas, {
-        backgroundColor: 'rgb(255, 255, 255)'
-    });
+    window.addEventListener("load", initSignature);
+    // Double-check initialization
+    setTimeout(() => {
+        if (!signaturePad) initSignature();
+        else resizeCanvas();
+    }, 1000);
 
     async function submitRegistration(e) {
       e.preventDefault();
@@ -296,32 +311,33 @@
       btn.disabled = true;
       btn.innerHTML = 'Submitting...';
 
+      const healthCheck = document.querySelector('input[name="health-has"]:checked');
       const payload = {
         student_details: {
-          full_name: document.getElementById('stu-fname').value.trim() + ' ' + document.getElementById('stu-lname').value.trim(),
-          dob: document.getElementById('stu-dob').value,
-          gender: document.getElementById('stu-gender').value,
-          class_name: document.getElementById('stu-class').value,
-          current_school: document.getElementById('stu-school').value,
-          address: document.getElementById('stu-address').value,
-          postcode: document.getElementById('stu-postcode').value,
-          ethnic_origin: document.getElementById('stu-ethnic').value
+          full_name: (document.getElementById('stu-fname')?.value || '').trim() + ' ' + (document.getElementById('stu-lname')?.value || '').trim(),
+          dob: document.getElementById('stu-dob')?.value,
+          gender: document.getElementById('stu-gender')?.value,
+          class_name: document.getElementById('stu-class')?.value,
+          current_school: document.getElementById('stu-school')?.value,
+          address: document.getElementById('stu-address')?.value,
+          postcode: document.getElementById('stu-postcode')?.value,
+          ethnic_origin: document.getElementById('stu-ethnic')?.value
         },
         parent_details: {
-          full_name: document.getElementById('parent-name').value,
-          relation: document.getElementById('parent-relation').value,
-          phone: document.getElementById('parent-phone').value,
-          email: document.getElementById('parent-email').value,
-          occupation: document.getElementById('parent-job').value,
-          emergency_contact: document.getElementById('emergency-phone').value
+          full_name: document.getElementById('parent-name')?.value,
+          relation: document.getElementById('parent-relation')?.value,
+          phone: document.getElementById('parent-phone')?.value,
+          email: document.getElementById('parent-email')?.value,
+          occupation: document.getElementById('parent-job')?.value,
+          emergency_contact: document.getElementById('emergency-phone')?.value
         },
         health_details: {
-          has_condition: document.querySelector('input[name="health-has"]:checked').value === 'yes',
-          details: document.getElementById('health-details').value
+          has_condition: healthCheck ? healthCheck.value === 'yes' : false,
+          details: document.getElementById('health-details')?.value || ''
         },
-        payment_method: document.getElementById('payment-method').value,
-        gdpr_consent: document.getElementById('gdpr-consent').checked,
-        signature: signaturePad.toDataURL()
+        payment_method: document.getElementById('payment-method')?.value,
+        gdpr_consent: document.getElementById('gdpr-consent')?.checked || false,
+        signature: signaturePad ? signaturePad.toDataURL() : null
       };
 
       try {
