@@ -680,7 +680,7 @@ select.form-control option {
     background: var(--bg-600);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
-    overflow: hidden;
+    overflow-x: auto;
 }
 
 .table-header {
@@ -700,6 +700,7 @@ select.form-control option {
 .data-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 600px;
 }
 
 .data-table th {
@@ -831,7 +832,7 @@ select.form-control option {
     background: var(--bg-600);
     border: 1px solid var(--border-medium);
     border-radius: var(--radius-2xl);
-    width: 100%;
+    width: 95%;
     max-width: 560px;
     max-height: 90vh;
     overflow-y: auto;

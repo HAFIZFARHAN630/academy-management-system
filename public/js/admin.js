@@ -153,8 +153,8 @@ function getTopbarHTML(title) {
           <div id="notif-list"><div style="padding:var(--space-5);text-align:center;color:var(--text-muted);font-size:0.85rem;">Loading...</div></div>
         </div>
       </div>
-      <a href="/admin/settings.html#profile" class="btn btn-secondary btn-icon" style="border-radius:50%; background:var(--bg-600); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; text-decoration:none;" title="Personal Profile">👤</a>
-      <button class="btn btn-secondary btn-sm" onclick="logout()">🚪 Logout</button>
+      <a href="/admin/settings.html#profile" class="btn btn-secondary btn-icon profile-btn" style="border-radius:50%; background:var(--bg-600); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:center; text-decoration:none; position:relative; z-index:10;" title="Personal Profile">👤</a>
+      <button class="btn btn-secondary btn-sm" onclick="logout()" style="position:relative; z-index:10;">🚪 Logout</button>
     </div>
   </div>`;
 }
