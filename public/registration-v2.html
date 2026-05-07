@@ -13,22 +13,12 @@
   <script src="/js/signature_pad.umd.min.js?v=2.6.0"></script>
   <style>
     body { font-family: 'Inter', sans-serif; }
-    .page-bg { 
-      background: linear-gradient(rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.9)), url('/images/academy-bg.png');
-      background-size: cover;
-      background-position: center;
-      background-attachment: fixed;
-    }
-    .glass-container {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
+    .gradient-bg { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); }
     .signature-canvas { touch-action: none; cursor: crosshair; }
     input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: #3b82f6; }
   </style>
 </head>
-<body class="page-bg min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+<body class="gradient-bg min-h-screen py-12 px-4 sm:px-6 lg:px-8">
   <div class="max-w-4xl mx-auto">
     <!-- Header -->
     <div class="text-center mb-10">
@@ -37,10 +27,10 @@
       <p class="mt-2 text-slate-600 font-medium">Official Admission & Registration Form</p>
     </div>
 
-    <form id="registration-form" onsubmit="submitRegistration(event)" class="space-y-8 glass-container p-8 rounded-2xl shadow-xl">
+    <form id="registration-form" onsubmit="submitRegistration(event)" class="space-y-8">
       
       <!-- 1. Student Information -->
-      <section class="bg-white/40 shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+      <section class="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
         <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
           <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">1</span>
@@ -96,7 +86,7 @@
       </section>
 
       <!-- 2. Parent/Guardian Details -->
-      <section class="bg-white/40 shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+      <section class="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
         <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
           <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">2</span>
@@ -133,7 +123,7 @@
       </section>
 
       <!-- 3. Learning & Support -->
-      <section class="bg-white/40 shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+      <section class="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
         <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
           <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">3</span>
@@ -213,7 +203,7 @@
       </section>
 
       <!-- 5. GDPR & Consent -->
-      <section class="bg-white/40 shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+      <section class="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
         <div class="bg-slate-50 px-6 py-4 border-bottom border-slate-200">
           <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
             <span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm">5</span>
