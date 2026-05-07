@@ -6,11 +6,20 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
+    "headers": [
       {
-        "source": "/calendar",
-        "destination": "/admin/calendar.html"
+        "source": "**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+          { "key": "Pragma",        "value": "no-cache" },
+          { "key": "Expires",       "value": "0" }
+        ]
       }
+    ],
+    "rewrites": [
+      { "source": "/calendar",          "destination": "/admin/calendar.html" },
+      { "source": "/registration.html", "destination": "/registration.html" },
+      { "source": "**",                "destination": "/index.html" }
     ]
   }
 }
