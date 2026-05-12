@@ -25,119 +25,175 @@ async function initPWA() {
         // Detect Platform
         const ua = navigator.userAgent;
         const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-        const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+        const isAndroid = /Android/.test(ua);
+        const isDesktop = !isIOS && !isAndroid;
 
+        // Trigger the App Selection Modal
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            
-            if (settings.force_app) {
-                showForceAppModal();
-            } else if (settings.prompt_install) {
-                if (!sessionStorage.getItem('pwa-dismissed')) {
-                    showInstallPopup();
-                }
-            }
+            showAppSelectionModal(settings, isDesktop);
         });
 
-        // iOS / Safari Fallback
-        if (isIOS && isSafari && !sessionStorage.getItem('pwa-dismissed')) {
-            setTimeout(() => {
-                if (settings.force_app) {
-                    showiOSInstallGuide(true);
-                } else if (settings.prompt_install) {
-                    showiOSInstallGuide(false);
-                }
-            }, 3000);
-        }
+        // Fallback for iOS/Desktop where beforeinstallprompt might not fire or is not supported
+        setTimeout(() => {
+            if (!sessionStorage.getItem('app-choice-shown') && !document.getElementById('app-selection-modal')) {
+                showAppSelectionModal(settings, isDesktop);
+            }
+        }, 2000);
+
     } catch (err) {
         console.error('Failed to init PWA', err);
     }
 }
 
-async function trackInstall() {
-    try {
-        const ua = navigator.userAgent;
-        const isIOS = /iPad|iPhone|iPod/.test(ua);
-        const isAndroid = /Android/.test(ua);
-        
-        await fetch('/api/analytics/pwa-install', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                device_type: isAndroid || isIOS ? 'mobile' : 'desktop',
-                os: isAndroid ? 'android' : (isIOS ? 'ios' : 'other'),
-                browser: /Chrome/.test(ua) ? 'chrome' : (/Safari/.test(ua) ? 'safari' : 'other')
-            })
-        });
-    } catch (err) {
-        console.error('Tracking failed', err);
-    }
-}
-
-function showInstallPopup() {
-    if (document.getElementById('pwa-install-popup')) return;
+function showAppSelectionModal(settings, isDesktop) {
+    if (document.getElementById('app-selection-modal')) return;
     
-    const popup = document.createElement('div');
-    popup.id = 'pwa-install-popup';
-    popup.style.cssText = `
+    const modal = document.createElement('div');
+    modal.id = 'app-selection-modal';
+    modal.style.cssText = `
         position: fixed;
-        bottom: 24px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, #1e1e3f 0%, #141528 100%);
-        color: #fff;
-        padding: 20px;
-        border-radius: 20px;
-        box-shadow: 0 15px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(108,99,255,0.3);
-        z-index: 10000;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(12px);
+        z-index: 10001;
         display: flex;
         align-items: center;
-        gap: 18px;
-        min-width: 340px;
-        max-width: 90vw;
-        animation: pwaSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        justify-content: center;
+        padding: 20px;
+        animation: fadeIn 0.4s ease;
     `;
     
-    popup.innerHTML = `
+    const desktopOption = isDesktop ? `
+        <div class="app-option" id="opt-desktop">
+            <div class="app-icon">💻</div>
+            <div class="app-info">
+                <strong>Desktop Software</strong>
+                <span>Full desktop experience with native features.</span>
+            </div>
+            <button class="app-btn-select">Download</button>
+        </div>
+    ` : '';
+
+    modal.innerHTML = `
         <style>
-          @keyframes pwaSlideUp { from { opacity:0; transform: translateX(-50%) translateY(30px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
-          .pwa-btn { border:none; padding:10px 20px; border-radius:12px; font-weight:700; cursor:pointer; transition:all 0.2s; font-size:0.9rem; }
-          .pwa-btn-primary { background: linear-gradient(90deg, #6C63FF, #8E85FF); color:#fff; box-shadow: 0 4px 15px rgba(108,99,255,0.4); }
-          .pwa-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(108,99,255,0.6); }
-          .pwa-btn-secondary { background: rgba(255,255,255,0.05); color:rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.1); }
-          .pwa-btn-secondary:hover { background: rgba(255,255,255,0.1); }
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            .app-selection-card {
+                background: linear-gradient(145deg, #1e1e3f, #141528);
+                padding: 40px;
+                border-radius: 28px;
+                max-width: 480px;
+                width: 100%;
+                text-align: center;
+                border: 1px solid rgba(108,99,255,0.3);
+                box-shadow: 0 40px 100px rgba(0,0,0,0.7);
+                animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            .app-options-list {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                margin: 30px 0;
+                text-align: left;
+            }
+            .app-option {
+                background: rgba(255,255,255,0.03);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 18px;
+                padding: 16px;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .app-option:hover {
+                background: rgba(108,99,255,0.1);
+                border-color: rgba(108,99,255,0.4);
+                transform: scale(1.02);
+            }
+            .app-icon {
+                font-size: 2rem;
+                width: 50px;
+                height: 50px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(108,99,255,0.2);
+                border-radius: 14px;
+            }
+            .app-info { flex: 1; }
+            .app-info strong { display: block; color: #fff; font-size: 1.05rem; }
+            .app-info span { color: rgba(255,255,255,0.5); font-size: 0.85rem; }
+            .app-btn-select {
+                background: #6C63FF;
+                color: #fff;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 10px;
+                font-weight: 700;
+                font-size: 0.85rem;
+            }
+            .web-link {
+                color: rgba(255,255,255,0.4);
+                text-decoration: none;
+                font-size: 0.9rem;
+                transition: color 0.2s;
+            }
+            .web-link:hover { color: #fff; }
         </style>
-        <div style="background: rgba(108,99,255,0.2); width:56px; height:56px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0;">
-            🎓
-        </div>
-        <div style="flex:1;">
-            <div style="font-weight:700; font-size:1.1rem; margin-bottom:2px;">Academy App</div>
-            <div style="font-size: 0.85rem; color: rgba(255,255,255,0.5); line-height:1.4;">Install for a faster experience & offline access.</div>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink:0;">
-            <button id="pwa-install-btn" class="pwa-btn pwa-btn-primary">Install</button>
-            <button id="pwa-close-btn" class="pwa-btn pwa-btn-secondary">Later</button>
+        <div class="app-selection-card">
+            <div style="font-size: 3.5rem; margin-bottom: 15px;">🎓</div>
+            <h2 style="color: #fff; margin: 0 0 8px 0; font-size: 1.6rem;">Academy Experience</h2>
+            <p style="color: rgba(255,255,255,0.5); font-size: 0.95rem;">Choose how you want to use the Academy platform today.</p>
+            
+            <div class="app-options-list">
+                <div class="app-option" id="opt-pwa">
+                    <div class="app-icon">📱</div>
+                    <div class="app-info">
+                        <strong>Install Mobile App</strong>
+                        <span>Fast, offline access, and lightweight.</span>
+                    </div>
+                    <button class="app-btn-select">Install</button>
+                </div>
+                ${desktopOption}
+            </div>
+
+            <a href="#" class="web-link" id="opt-web">Continue with Web Browser</a>
         </div>
     `;
     
-    document.body.appendChild(popup);
-    
-    document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+    document.body.appendChild(modal);
+    sessionStorage.setItem('app-choice-shown', '1');
+
+    document.getElementById('opt-pwa').addEventListener('click', async () => {
         if (deferredPrompt) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
                 trackInstall();
-                popup.remove();
+                modal.remove();
             }
             deferredPrompt = null;
+        } else {
+            modal.remove();
+            showiOSInstallGuide(true);
         }
     });
-    
-    document.getElementById('pwa-close-btn').addEventListener('click', () => {
-        popup.remove();
-        sessionStorage.setItem('pwa-dismissed', '1');
+
+    if (isDesktop) {
+        document.getElementById('opt-desktop').addEventListener('click', () => {
+            // Link to the desktop installer (e.g. GitHub Releases)
+            window.open('https://github.com/HAFIZFARHAN630/academy-management-system/releases', '_blank');
+            modal.remove();
+        });
+    }
+
+    document.getElementById('opt-web').addEventListener('click', (e) => {
+        e.preventDefault();
+        modal.remove();
     });
 }
 
