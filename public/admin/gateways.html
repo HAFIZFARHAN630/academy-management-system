@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Gateway Settings | Academy Admin</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <style>
+        .gateway-card {
+            background: var(--bg-800);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 24px;
+        }
+        .gateway-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .config-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .config-grid { grid-template-columns: 1fr; }
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .status-active { background: rgba(46, 213, 115, 0.1); color: #2ed573; }
+        .status-inactive { background: rgba(255, 71, 87, 0.1); color: #ff4757; }
+    </style>
+</head>
+<body class="admin-page">
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>Payment Gateways</h1>
+            <p>Configure how students and parents pay fees.</p>
+        </header>
+
+        <div id="gateways-list">
+            <!-- Gateways will be loaded here -->
+            <div class="loading-spinner"></div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        async function loadGateways() {
+            try {
+                const gateways = await API.get('/payments/gateways/admin');
+                const container = document.getElementById('gateways-list');
+                container.innerHTML = '';
+
+                gateways.forEach(g => {
+                    const card = document.createElement('div');
+                    card.className = 'gateway-card';
+                    card.innerHTML = `
+                        <div class="gateway-header">
+                            <div>
+                                <h3 style="margin:0">${g.display_name || g.provider.toUpperCase()}</h3>
+                                <span class="status-badge ${g.is_active ? 'status-active' : 'status-inactive'}">
+                                    ${g.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="toggle-${g.id}" ${g.is_active ? 'checked' : ''} onchange="toggleGateway('${g.id}', this.checked)">
+                                <label for="toggle-${g.id}"></label>
+                            </div>
+                        </div>
+                        <div class="config-grid">
+                            <div class="form-group">
+                                <label>Mode</label>
+                                <select onchange="updateGateway('${g.id}', {mode: this.value})" class="form-input">
+                                    <option value="sandbox" ${g.mode === 'sandbox' ? 'selected' : ''}>Sandbox (Testing)</option>
+                                    <option value="live" ${g.mode === 'live' ? 'selected' : ''}>Live (Production)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Display Name</label>
+                                <input type="text" value="${g.display_name || ''}" onchange="updateGateway('${g.id}', {display_name: this.value})" class="form-input">
+                            </div>
+                        </div>
+                        <div class="config-section" style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:20px;">
+                            <h4>Configuration Keys</h4>
+                            <div id="keys-${g.id}" class="config-grid">
+                                ${renderKeys(g)}
+                            </div>
+                            <button onclick="saveKeys('${g.id}')" class="btn btn-primary" style="margin-top:15px;">Save Keys</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                console.error('Failed to load gateways', err);
+            }
+        }
+
+        function renderKeys(g) {
+            const config = g.config || {};
+            if (g.provider === 'stripe') {
+                return `
+                    <div class="form-group">
+                        <label>Public Key</label>
+                        <input type="text" id="key-pk-${g.id}" value="${config.public_key || ''}" class="form-input" placeholder="pk_test_...">
+                    </div>
+                    <div class="form-group">
+                        <label>Secret Key</label>
+                        <input type="password" id="key-sk-${g.id}" value="${config.secret_key || ''}" class="form-input" placeholder="sk_test_...">
+                    </div>
+                `;
+            } else if (g.provider === 'paypal') {
+                return `
+                    <div class="form-group">
+                        <label>Client ID</label>
+                        <input type="text" id="key-ci-${g.id}" value="${config.client_id || ''}" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Secret</label>
+                        <input type="password" id="key-cs-${g.id}" value="${config.client_secret || ''}" class="form-input">
+                    </div>
+                `;
+            } else if (g.provider === 'bank_transfer') {
+                return `
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Bank Details (HTML supported)</label>
+                        <textarea id="key-bd-${g.id}" class="form-input" rows="4">${config.bank_details || ''}</textarea>
+                    </div>
+                `;
+            }
+            return '<p>Standard gateway configuration.</p>';
+        }
+
+        async function toggleGateway(id, active) {
+            await API.put(\`/payments/gateways/\${id}\`, { is_active: active });
+            showToast(active ? 'Gateway enabled' : 'Gateway disabled');
+        }
+
+        async function updateGateway(id, data) {
+            await API.put(\`/payments/gateways/\${id}\`, data);
+            showToast('Settings updated');
+        }
+
+        async function saveKeys(id) {
+            const config = {};
+            const pk = document.getElementById(\`key-pk-\${id}\`);
+            const sk = document.getElementById(\`key-sk-\${id}\`);
+            const ci = document.getElementById(\`key-ci-\${id}\`);
+            const cs = document.getElementById(\`key-cs-\${id}\`);
+            const bd = document.getElementById(\`key-bd-\${id}\`);
+
+            if (pk) config.public_key = pk.value;
+            if (sk) config.secret_key = sk.value;
+            if (ci) config.client_id = ci.value;
+            if (cs) config.client_secret = cs.value;
+            if (bd) config.bank_details = bd.value;
+
+            await API.put(\`/payments/gateways/\${id}\`, { config });
+            showToast('API Keys saved securely');
+        }
+
+        loadGateways();
+    </script>
+</body>
+</html>

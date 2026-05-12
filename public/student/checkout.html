@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Payment | Academy</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <style>
+        .checkout-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .gateway-option {
+            background: var(--bg-800);
+            border: 2px solid transparent;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .gateway-option:hover {
+            border-color: rgba(108,99,255,0.4);
+            background: var(--bg-700);
+        }
+        .gateway-option.selected {
+            border-color: var(--primary);
+            background: rgba(108,99,255,0.1);
+        }
+        .gateway-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .summary-card {
+            background: var(--primary);
+            color: #fff;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(108,99,255,0.3);
+        }
+    </style>
+</head>
+<body class="public-page">
+    <div class="checkout-container">
+        <div class="summary-card">
+            <h2 style="margin:0; opacity:0.8; font-size:1rem; text-transform:uppercase; letter-spacing:1px;">Amount to Pay</h2>
+            <div id="amount-display" style="font-size:3rem; font-weight:800; margin:10px 0;">Rs. 0</div>
+            <p id="description-display" style="margin:0; opacity:0.9;">Monthly Fee - May 2026</p>
+        </div>
+
+        <h3>Select Payment Method</h3>
+        <div id="gateways-container">
+            <!-- Dynamic Gateways -->
+            <div class="loading-spinner"></div>
+        </div>
+
+        <div id="payment-details" style="display:none; margin-top:30px;">
+            <!-- Bank Details or Provider Specifics -->
+        </div>
+
+        <button id="pay-btn" class="btn btn-primary btn-block" style="margin-top:40px; display:none;" onclick="processPayment()">
+            Proceed to Secure Payment
+        </button>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        let selectedGateway = null;
+        let amount = 5000; // Mock amount, should come from URL or API
+
+        async function loadActiveGateways() {
+            try {
+                const gateways = await API.get('/payments/gateways');
+                const container = document.getElementById('gateways-container');
+                container.innerHTML = '';
+
+                gateways.forEach(g => {
+                    const div = document.createElement('div');
+                    div.className = 'gateway-option';
+                    div.id = \`gateway-\${g.id}\`;
+                    div.onclick = () => selectGateway(g);
+                    
+                    let icon = '💳';
+                    if (g.provider === 'paypal') icon = '🅿️';
+                    if (g.provider === 'bank_transfer') icon = '🏦';
+
+                    div.innerHTML = \`
+                        <div class="gateway-icon">\${icon}</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:700;">\${g.display_name}</div>
+                            <div style="font-size:0.85rem; color:rgba(255,255,255,0.5);">\${g.description}</div>
+                        </div>
+                    \`;
+                    container.appendChild(div);
+                });
+
+                document.getElementById('amount-display').innerText = \`Rs. \${amount.toLocaleString()}\`;
+            } catch (err) {
+                console.error('Failed to load gateways', err);
+            }
+        }
+
+        function selectGateway(g) {
+            selectedGateway = g;
+            document.querySelectorAll('.gateway-option').forEach(opt => opt.classList.remove('selected'));
+            document.getElementById(\`gateway-\${g.id}\`).classList.add('selected');
+            
+            const details = document.getElementById('payment-details');
+            const payBtn = document.getElementById('pay-btn');
+            
+            if (g.provider === 'bank_transfer') {
+                details.style.display = 'block';
+                details.innerHTML = \`
+                    <div class="card" style="background:var(--bg-800); border:1px dashed var(--primary);">
+                        <h4 style="margin-top:0;">Bank Account Details</h4>
+                        <p style="font-size:0.9rem; line-height:1.6;">
+                            Transfer the amount to the following account and upload the receipt below.
+                        </p>
+                        <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; font-family:monospace; margin-bottom:20px;">
+                            ClickTake Academy<br>
+                            HBL Bank - 1234 5678 9012 3456<br>
+                            Branch Code: 0012
+                        </div>
+                        <label>Upload Receipt (Image/PDF)</label>
+                        <input type="file" class="form-input" id="receipt-file">
+                    </div>
+                \`;
+                payBtn.innerText = 'Submit Proof of Payment';
+            } else {
+                details.style.display = 'none';
+                payBtn.innerText = \`Pay with \${g.display_name}\`;
+            }
+            
+            payBtn.style.display = 'block';
+        }
+
+        async function processPayment() {
+            if (!selectedGateway) return;
+            
+            if (selectedGateway.provider === 'bank_transfer') {
+                const file = document.getElementById('receipt-file').files[0];
+                if (!file) return alert('Please upload your bank transfer receipt');
+                
+                showToast('Receipt submitted. Admin will verify shortly.');
+                // Handle file upload to Supabase Storage/API
+            } else {
+                showToast(\`Redirecting to \${selectedGateway.display_name} secure checkout...\`);
+                // Call API to create checkout session
+            }
+        }
+
+        loadActiveGateways();
+    </script>
+</body>
+</html>

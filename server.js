@@ -34,6 +34,8 @@ app.use('/api/timetable', require('./routes/timetable'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/registrations', require('./routes/registrations'));
 app.use('/api/data', require('./routes/import_export'));
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/payments', require('./routes/payments'));
 
 // ─── Cron Jobs ────────────────────────────────────────────────────────────────
 require('./cron').initCron();
@@ -59,6 +61,7 @@ async function seedAdmin() {
     }
 }
 seedAdmin();
+require('./database/seed_gateways').seedGateways();
 
 // ─── Stats Endpoint (Public counts) ──────────────────────────────────────────
 app.get('/api/stats/public', async (req, res) => {
