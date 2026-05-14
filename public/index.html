@@ -7,10 +7,10 @@
   <title>ClickTake Academy — Management System</title>
   <meta name="description"
     content="Academy Management System powered by ClickTake Technologies. Manage students, teachers, attendance, and visitors in one place.">
-  <link rel="manifest" href="/manifest.json?v=2.6.6">
-  <link rel="stylesheet" href="/css/design-system.css?v=2.6.6">
-  <link rel="stylesheet" href="/css/components.css?v=2.6.6">
-  <link rel="stylesheet" href="/css/animations.css?v=2.6.6">
+  <link rel="manifest" href="/manifest.json?v=2.6.7">
+  <link rel="stylesheet" href="/css/design-system.css?v=2.6.7">
+  <link rel="stylesheet" href="/css/components.css?v=2.6.7">
+  <link rel="stylesheet" href="/css/animations.css?v=2.6.7">
   <style>
     body {
       overflow-x: hidden;
@@ -347,7 +347,7 @@
 
     <!-- Badge -->
     <div class="hero-badge">
-      ✨ Academy Management System v2.6.6
+      ✨ Academy Management System v2.6.7
     </div>
 
     <!-- Title -->
@@ -435,14 +435,14 @@
     <!-- Footer -->
     <div class="hero-footer" style="text-align: center; width: 100%; margin-top: auto; padding: 20px 0;">
       Built with ❤️ by <a href="https://clicktaketech.com/" target="_blank">ClickTake Technologies</a>
-      &nbsp;·&nbsp; Single-Academy Edition &nbsp;·&nbsp; <a href="/privacy.html">Privacy Policy</a> &nbsp;·&nbsp; v2.6.6
+      &nbsp;·&nbsp; Single-Academy Edition &nbsp;·&nbsp; <a href="/privacy.html">Privacy Policy</a> &nbsp;·&nbsp; v2.6.7
     </div>
   </section>
 
   <div id="toast-container"></div>
 
-  <script src="/js/api.js?v=2.6.6"></script>
-  <script src="/js/pwa.js?v=2.6.6"></script>
+  <script src="/js/api.js?v=2.6.7"></script>
+  <script src="/js/pwa.js?v=2.6.7"></script>
   <script>
     // ── Already logged in? Redirect ──
     const user = getUser();
@@ -509,8 +509,8 @@
     loadPublicStats();
   </script>
   <script>
-    // ── Force Clear Cache for v2.6.6 ──
-    if (localStorage.getItem('ams_version') !== '2.6.6') {
+    // ── Force Clear Cache for v2.6.7 ──
+    if (localStorage.getItem('ams_version') !== '2.6.7') {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(regs => {
                 for (let reg of regs) reg.unregister();
@@ -519,12 +519,12 @@
         caches.keys().then(names => {
             for (let name of names) caches.delete(name);
         });
-        localStorage.setItem('ams_version', '2.6.6');
-        console.log('🚀 System upgraded to v2.6.6 - Cache Cleared');
+        localStorage.setItem('ams_version', '2.6.7');
+        console.log('🚀 System upgraded to v2.6.7 - Cache Cleared');
     }
   </script>
-  <script src="/js/api.js?v=2.6.6"></script>
-  <script src="/js/pwa.js?v=2.6.6"></script>
+  <script src="/js/api.js?v=2.6.7"></script>
+  <script src="/js/pwa.js?v=2.6.7"></script>
 </body>
 
 </html>

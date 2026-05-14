@@ -56,15 +56,19 @@ function showAppSelectionModal(settings, isDesktop) {
     modal.id = 'app-selection-modal';
     modal.style.cssText = `
         position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(10, 11, 30, 0.9);
-        backdrop-filter: blur(15px);
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(10, 11, 30, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
         z-index: 10001;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 20px;
-        animation: fadeIn 0.4s ease;
+        overflow-y: auto;
+        touch-action: none;
     `;
     
     modal.innerHTML = `
@@ -73,10 +77,12 @@ function showAppSelectionModal(settings, isDesktop) {
             @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
             .app-selection-card {
                 background: #141528;
-                padding: 40px;
-                border-radius: 32px;
-                max-width: 440px;
+                padding: 30px 20px;
+                border-radius: 24px;
+                max-width: 400px;
                 width: 100%;
+                max-height: 90vh;
+                overflow-y: auto;
                 text-align: center;
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 box-shadow: 0 40px 100px rgba(0,0,0,0.8);
