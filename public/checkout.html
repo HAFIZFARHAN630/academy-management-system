@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout — Academy Management System</title>
+    <link rel="stylesheet" href="/css/design-system.css?v=2.6.4">
+    <link rel="stylesheet" href="/css/components.css?v=2.6.4">
+    <link rel="stylesheet" href="/css/animations.css?v=2.6.4">
+    <style>
+        body { background: #0A0B1E; min-height: 100vh; color: #fff; }
+        .checkout-container { max-width: 600px; margin: 60px auto; padding: 20px; }
+        .checkout-card {
+            background: rgba(15, 16, 36, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 32px;
+            padding: 40px;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+        }
+        .gateway-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .gateway-card:hover {
+            background: rgba(108, 99, 255, 0.1);
+            border-color: #6C63FF;
+            transform: translateY(-2px);
+        }
+        .gateway-card.active {
+            border-color: #6C63FF;
+            background: rgba(108, 99, 255, 0.15);
+        }
+        .gateway-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .gateway-info { flex: 1; }
+        .gateway-info h4 { margin: 0; font-size: 1.05rem; }
+        .gateway-info p { margin: 4px 0 0; color: rgba(255,255,255,0.5); font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div class="checkout-container">
+        <div class="text-center mb-10">
+            <h1 class="text-3xl font-extrabold tracking-tight">Complete Admission</h1>
+            <p class="text-slate-400 mt-2">Please select a payment method to finalize your registration.</p>
+        </div>
+
+        <div class="checkout-card">
+            <div class="mb-8 p-6 bg-blue-600/10 border border-blue-500/20 rounded-2xl">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-slate-400">Registration Fee</span>
+                    <span class="text-xl font-bold" id="total-amount">£25.00</span>
+                </div>
+                <div class="text-xs text-blue-400 font-medium">Registration ID: <span id="reg-id">—</span></div>
+            </div>
+
+            <h3 class="text-lg font-bold mb-4">Payment Methods</h3>
+            <div id="gateways-list">
+                <div class="text-center py-10 text-slate-500">Loading payment methods...</div>
+            </div>
+
+            <button id="pay-btn" disabled class="btn btn-primary w-full mt-8 py-4 rounded-xl text-lg font-bold">
+                Proceed to Payment
+            </button>
+            
+            <p class="text-center text-xs text-slate-500 mt-6">
+                Secure payment powered by SLASA Academy. <br>
+                For support, contact admin@slasa.org
+            </p>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50"></div>
+
+    <script src="/js/api.js?v=2.6.4"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const regId = params.get('id');
+        const amount = params.get('amount') || '25';
+        
+        let selectedGateway = null;
+
+        document.getElementById('reg-id').textContent = regId || 'NEW';
+        document.getElementById('total-amount').textContent = `£${amount}.00`;
+
+        async function loadGateways() {
+            try {
+                const gateways = await API.get('/payments/gateways');
+                const list = document.getElementById('gateways-list');
+                
+                if (!gateways || gateways.length === 0) {
+                    list.innerHTML = `
+                        <div class="p-6 text-center border border-dashed border-white/10 rounded-2xl">
+                            <p class="text-slate-400 mb-4">No online payment methods available.</p>
+                            <a href="/" class="btn btn-secondary w-full">Pay in Person</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = gateways.map(g => `
+                    <div class="gateway-card" onclick="selectGateway('${g.id}', '${g.provider}')" id="g-${g.id}">
+                        <div class="gateway-icon">${getIcon(g.provider)}</div>
+                        <div class="gateway-info">
+                            <h4>${g.display_name}</h4>
+                            <p>${g.description || 'Instant secure payment'}</p>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error(err);
+                toast('Failed to load payment methods', 'error');
+            }
+        }
+
+        function getIcon(provider) {
+            const icons = { stripe: '💳', paypal: '🅿️', bank: '🏦', cash: '💵' };
+            return icons[provider.toLowerCase()] || '💰';
+        }
+
+        function selectGateway(id, provider) {
+            selectedGateway = { id, provider };
+            document.querySelectorAll('.gateway-card').forEach(el => el.classList.remove('active'));
+            document.getElementById(`g-${id}`).classList.add('active');
+            document.getElementById('pay-btn').disabled = false;
+        }
+
+        document.getElementById('pay-btn').onclick = async () => {
+            if (!selectedGateway) return;
+            
+            const btn = document.getElementById('pay-btn');
+            btn.disabled = true;
+            btn.innerHTML = 'Connecting...';
+
+            try {
+                // Here we would call an endpoint to create a checkout session
+                // For now, if it's Stripe, we simulate redirection
+                if (selectedGateway.provider === 'bank') {
+                    alert('Please transfer £' + amount + ' to the bank details provided on your form. Your registration ID is: ' + regId);
+                    window.location.href = '/';
+                } else {
+                    toast('Redirecting to ' + selectedGateway.provider + '...', 'info');
+                    // Simulating backend call
+                    setTimeout(() => {
+                        window.location.href = '/'; // In reality, redirect to Stripe/PayPal URL
+                    }, 2000);
+                }
+            } catch (err) {
+                toast(err.message, 'error');
+                btn.disabled = false;
+            }
+        };
+
+        loadGateways();
+    </script>
+</body>
+</html>

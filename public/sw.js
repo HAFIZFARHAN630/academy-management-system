@@ -1,7 +1,8 @@
-const CACHE_NAME = 'academy-v2.6.3';
+const CACHE_NAME = 'academy-v2.6.4';
 const ASSETS = [
   '/',
   '/index.html',
+  '/checkout.html',
   '/css/design-system.css',
   '/css/components.css',
   '/js/api.js'

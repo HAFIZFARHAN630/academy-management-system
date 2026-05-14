@@ -55,8 +55,8 @@ function showAppSelectionModal(settings, isDesktop) {
     modal.style.cssText = `
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.85);
-        backdrop-filter: blur(12px);
+        background: rgba(10, 11, 30, 0.9);
+        backdrop-filter: blur(15px);
         z-index: 10001;
         display: flex;
         align-items: center;
@@ -65,135 +65,143 @@ function showAppSelectionModal(settings, isDesktop) {
         animation: fadeIn 0.4s ease;
     `;
     
-    const desktopOption = isDesktop ? `
-        <div class="app-option" id="opt-desktop">
-            <div class="app-icon">💻</div>
-            <div class="app-info">
-                <strong>Desktop Software</strong>
-                <span>Full desktop experience with native features.</span>
-            </div>
-            <button class="app-btn-select">Download</button>
-        </div>
-    ` : '';
-
     modal.innerHTML = `
         <style>
             @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
             @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
             .app-selection-card {
-                background: linear-gradient(145deg, #1e1e3f, #141528);
+                background: #141528;
                 padding: 40px;
-                border-radius: 28px;
-                max-width: 480px;
+                border-radius: 32px;
+                max-width: 440px;
                 width: 100%;
                 text-align: center;
-                border: 1px solid rgba(108,99,255,0.3);
-                box-shadow: 0 40px 100px rgba(0,0,0,0.7);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: 0 40px 100px rgba(0,0,0,0.8);
                 animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+                position: relative;
             }
-            .app-options-list {
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-                margin: 30px 0;
-                text-align: left;
-            }
-            .app-option {
-                background: rgba(255,255,255,0.03);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 18px;
-                padding: 16px;
-                display: flex;
-                align-items: center;
-                gap: 16px;
-                cursor: pointer;
-                transition: all 0.2s;
-            }
-            .app-option:hover {
-                background: rgba(108,99,255,0.1);
-                border-color: rgba(108,99,255,0.4);
-                transform: scale(1.02);
-            }
-            .app-icon {
-                font-size: 2rem;
-                width: 50px;
-                height: 50px;
+            .close-modal-btn {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.1);
+                color: #fff;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: rgba(108,99,255,0.2);
-                border-radius: 14px;
+                cursor: pointer;
+                transition: all 0.2s;
+                font-size: 20px;
             }
-            .app-info { flex: 1; }
-            .app-info strong { display: block; color: #fff; font-size: 1.05rem; }
-            .app-info span { color: rgba(255,255,255,0.5); font-size: 0.85rem; }
-            .app-btn-select {
+            .close-modal-btn:hover {
+                background: rgba(255,255,255,0.1);
+                transform: rotate(90deg);
+            }
+            .app-option {
+                background: rgba(108, 99, 255, 0.05);
+                border: 1px solid rgba(108, 99, 255, 0.2);
+                border-radius: 20px;
+                padding: 20px;
+                margin: 25px 0;
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                cursor: pointer;
+                transition: all 0.3s;
+                text-align: left;
+            }
+            .app-option:hover {
+                background: rgba(108, 99, 255, 0.15);
+                border-color: #6C63FF;
+                transform: translateY(-2px);
+            }
+            .app-icon-box {
+                font-size: 2.2rem;
+                background: rgba(108, 99, 255, 0.2);
+                width: 60px;
+                height: 60px;
+                border-radius: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .app-info-box { flex: 1; }
+            .app-info-box h4 { margin: 0; color: #fff; font-size: 1.1rem; }
+            .app-info-box p { margin: 4px 0 0; color: rgba(255,255,255,0.5); font-size: 0.85rem; }
+            .install-badge {
                 background: #6C63FF;
                 color: #fff;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 10px;
-                font-weight: 700;
-                font-size: 0.85rem;
+                padding: 6px 12px;
+                border-radius: 8px;
+                font-size: 0.75rem;
+                font-weight: 800;
+                text-transform: uppercase;
             }
-            .web-link {
+            .continue-web {
                 color: rgba(255,255,255,0.4);
                 text-decoration: none;
                 font-size: 0.9rem;
+                font-weight: 500;
                 transition: color 0.2s;
             }
-            .web-link:hover { color: #fff; }
+            .continue-web:hover { color: #fff; }
         </style>
         <div class="app-selection-card">
-            <div style="font-size: 3.5rem; margin-bottom: 15px;">🎓</div>
-            <h2 style="color: #fff; margin: 0 0 8px 0; font-size: 1.6rem;">Academy Experience</h2>
-            <p style="color: rgba(255,255,255,0.5); font-size: 0.95rem;">Choose how you want to use the Academy platform today.</p>
+            <button class="close-modal-btn" id="close-pwa-modal">&times;</button>
+            <div style="font-size: 4rem; margin-bottom: 10px;">🚀</div>
+            <h2 style="color: #fff; margin: 0; font-size: 1.8rem; font-weight: 800;">Get the App</h2>
+            <p style="color: rgba(255,255,255,0.5); font-size: 0.95rem; margin-top: 8px;">Install the Academy platform on your ${isDesktop ? 'Computer' : 'Phone'} for a premium experience.</p>
             
-            <div class="app-options-list">
-                <div class="app-option" id="opt-pwa">
-                    <div class="app-icon">📱</div>
-                    <div class="app-info">
-                        <strong>Install Mobile App</strong>
-                        <span>Fast, offline access, and lightweight.</span>
-                    </div>
-                    <button class="app-btn-select">Install</button>
+            <div class="app-option" id="install-pwa-btn">
+                <div class="app-icon-box">${isDesktop ? '💻' : '📱'}</div>
+                <div class="app-info-box">
+                    <h4>Official Academy App</h4>
+                    <p>Fast, secure & works offline.</p>
                 </div>
-                ${desktopOption}
+                <div class="install-badge">Install</div>
             </div>
 
-            <a href="#" class="web-link" id="opt-web">Continue with Web Browser</a>
+            <a href="#" class="continue-web" id="continue-web-btn">Continue in Browser</a>
         </div>
     `;
     
     document.body.appendChild(modal);
     sessionStorage.setItem('app-choice-shown', '1');
 
-    document.getElementById('opt-pwa').addEventListener('click', async () => {
+    const closeModal = () => modal.remove();
+
+    document.getElementById('close-pwa-modal').addEventListener('click', closeModal);
+    document.getElementById('continue-web-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        closeModal();
+    });
+
+    document.getElementById('install-pwa-btn').addEventListener('click', async () => {
         if (deferredPrompt) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
-                trackInstall();
-                modal.remove();
+                closeModal();
             }
             deferredPrompt = null;
         } else {
-            modal.remove();
-            showiOSInstallGuide(true);
+            closeModal();
+            const ua = navigator.userAgent;
+            const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+            if (isIOS) {
+                showiOSInstallGuide(true);
+            } else if (isDesktop) {
+                // For desktop if prompt isn't supported or fired yet, show a generic guide
+                alert('To install: Look for the install icon in your browser address bar or menu.');
+            } else {
+                alert('To install: Open your browser menu and select "Install App" or "Add to Home Screen".');
+            }
         }
-    });
-
-    if (isDesktop) {
-        document.getElementById('opt-desktop').addEventListener('click', () => {
-            // Link to the desktop installer (e.g. GitHub Releases)
-            window.open('https://github.com/HAFIZFARHAN630/academy-management-system/releases', '_blank');
-            modal.remove();
-        });
-    }
-
-    document.getElementById('opt-web').addEventListener('click', (e) => {
-        e.preventDefault();
-        modal.remove();
     });
 }
 
