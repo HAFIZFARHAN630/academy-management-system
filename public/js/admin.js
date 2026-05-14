@@ -120,6 +120,7 @@ function getSidebarHTML(activePage) {
         <div class="sidebar-section-label">Finance & HR</div>
         <a href="/admin/salary.html" class="nav-item ${activePage === 'salary' ? 'active' : ''}"><span class="nav-icon">💰</span><span class="nav-label">Salary</span></a>
         <a href="/admin/leave.html" class="nav-item ${activePage === 'leave' ? 'active' : ''}"><span class="nav-icon">📅</span><span class="nav-label">Leave</span><span class="nav-badge" id="leave-badge">0</span></a>
+        <a href="/admin/gateways.html" class="nav-item ${activePage === 'gateways' ? 'active' : ''}"><span class="nav-icon">💳</span><span class="nav-label">Payment Gateways</span></a>
       </div>
       <div class="sidebar-section">
         <div class="sidebar-section-label">System</div>

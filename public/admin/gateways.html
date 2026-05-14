@@ -39,20 +39,38 @@
     </style>
 </head>
 <body class="admin-page">
-    <div class="admin-container">
-        <header class="admin-header">
-            <h1>Payment Gateways</h1>
-            <p>Configure how students and parents pay fees.</p>
-        </header>
-
-        <div id="gateways-list">
-            <!-- Gateways will be loaded here -->
+    <div class="admin-layout" id="app">
+        <div style="padding: 100px; text-align: center; color: var(--text-muted);">
             <div class="loading-spinner"></div>
+            <p style="margin-top:20px;">Initializing Secure Admin Workspace...</p>
         </div>
     </div>
 
     <script src="/js/api.js"></script>
+    <script src="/js/admin.js"></script>
     <script>
+        async function initPage() {
+            document.getElementById('app').innerHTML = `
+            ${getSidebarHTML('gateways')}
+            <main class="main-content">
+                ${getTopbarHTML('Payment Gateways')}
+                <div class="content-wrapper">
+                    <div class="admin-container">
+                        <header class="admin-header" style="margin-bottom:30px;">
+                            <h2 style="margin:0">Payment Providers</h2>
+                            <p class="text-secondary">Configure how students and parents pay fees.</p>
+                        </header>
+                        <div id="gateways-list">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </main>`;
+            
+            await initAdminLayout('/admin/gateways.html');
+            loadGateways();
+        }
+
         async function loadGateways() {
             try {
                 const gateways = await API.get('/payments/gateways/admin');
@@ -89,17 +107,18 @@
                             </div>
                         </div>
                         <div class="config-section" style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:20px;">
-                            <h4>Configuration Keys</h4>
+                            <h4 style="margin-bottom:15px;">Configuration Keys</h4>
                             <div id="keys-${g.id}" class="config-grid">
                                 ${renderKeys(g)}
                             </div>
-                            <button onclick="saveKeys('${g.id}')" class="btn btn-primary" style="margin-top:15px;">Save Keys</button>
+                            <button onclick="saveKeys('${g.id}')" class="btn btn-primary" style="margin-top:15px;">Save Secure Keys</button>
                         </div>
                     `;
                     container.appendChild(card);
                 });
             } catch (err) {
                 console.error('Failed to load gateways', err);
+                toast('Failed to load gateways', 'error');
             }
         }
 
@@ -139,22 +158,27 @@
         }
 
         async function toggleGateway(id, active) {
-            await API.put(\`/payments/gateways/\${id}\`, { is_active: active });
-            showToast(active ? 'Gateway enabled' : 'Gateway disabled');
+            try {
+                await API.put(`/payments/gateways/${id}`, { is_active: active });
+                toast(active ? 'Gateway enabled' : 'Gateway disabled', 'success');
+                loadGateways(); // Reload to update badges
+            } catch (e) { toast(e.message, 'error'); }
         }
 
         async function updateGateway(id, data) {
-            await API.put(\`/payments/gateways/\${id}\`, data);
-            showToast('Settings updated');
+            try {
+                await API.put(`/payments/gateways/${id}`, data);
+                toast('Settings updated', 'success');
+            } catch (e) { toast(e.message, 'error'); }
         }
 
         async function saveKeys(id) {
             const config = {};
-            const pk = document.getElementById(\`key-pk-\${id}\`);
-            const sk = document.getElementById(\`key-sk-\${id}\`);
-            const ci = document.getElementById(\`key-ci-\${id}\`);
-            const cs = document.getElementById(\`key-cs-\${id}\`);
-            const bd = document.getElementById(\`key-bd-\${id}\`);
+            const pk = document.getElementById(`key-pk-${id}`);
+            const sk = document.getElementById(`key-sk-${id}`);
+            const ci = document.getElementById(`key-ci-${id}`);
+            const cs = document.getElementById(`key-cs-${id}`);
+            const bd = document.getElementById(`key-bd-${id}`);
 
             if (pk) config.public_key = pk.value;
             if (sk) config.secret_key = sk.value;
@@ -162,11 +186,13 @@
             if (cs) config.client_secret = cs.value;
             if (bd) config.bank_details = bd.value;
 
-            await API.put(\`/payments/gateways/\${id}\`, { config });
-            showToast('API Keys saved securely');
+            try {
+                await API.put(`/payments/gateways/${id}`, { config });
+                toast('API Keys saved securely', 'success');
+            } catch (e) { toast(e.message, 'error'); }
         }
 
-        loadGateways();
+        document.addEventListener('DOMContentLoaded', initPage);
     </script>
 </body>
 </html>
