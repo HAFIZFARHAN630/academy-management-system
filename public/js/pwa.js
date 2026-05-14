@@ -189,6 +189,7 @@ function showAppSelectionModal(settings, isDesktop) {
     });
 
     document.getElementById('install-pwa-btn').addEventListener('click', async () => {
+        const btn = document.getElementById('install-pwa-btn');
         if (deferredPrompt) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
@@ -197,16 +198,14 @@ function showAppSelectionModal(settings, isDesktop) {
             }
             deferredPrompt = null;
         } else {
-            closeModal();
             const ua = navigator.userAgent;
             const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
             if (isIOS) {
+                closeModal();
                 showiOSInstallGuide(true);
-            } else if (isDesktop) {
-                // For desktop if prompt isn't supported or fired yet, show a generic guide
-                alert('To install: Look for the install icon in your browser address bar or menu.');
             } else {
-                alert('To install: Open your browser menu and select "Install App" or "Add to Home Screen".');
+                // If not ready, tell the user how to install manually
+                alert('Your browser is preparing the installation. If it doesn\'t appear, please use your browser menu and select "Add to Home Screen".');
             }
         }
     });
