@@ -1,4 +1,4 @@
-const supabase = require('./database/supabase');
+const supabase = require('./supabase');
 
 async function seedGateways() {
     const defaultGateways = [

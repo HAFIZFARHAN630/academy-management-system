@@ -1,5 +1,5 @@
 /* ─── api.js — Fetch wrapper with JWT auth ──────────────────────────────── */
-const API_BASE = 'https://academy-management-system-40i1.onrender.com/api';
+const API_BASE = '/api';
 let APP_CONFIG = { currency: 'PKR', phone_prefix: '+92', timezone: 'Asia/Karachi' };
 console.log('🚀 ClickTake Academy System v2.6.3 Initialized');
 

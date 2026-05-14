@@ -215,15 +215,18 @@
             </div>
             <div class="settings-row">
               <div><div class="label">Liveness Detection</div><div class="hint">Prevent photo spoofing</div></div>
-              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              <label class="toggle"><input type="checkbox" id="face-liveness"><span class="toggle-slider"></span></label>
             </div>
             <div class="settings-row">
               <div><div class="label">Match Threshold</div><div class="hint">Similarity % required</div></div>
-              <input class="form-control" style="width:90px;" type="number" value="90" min="70" max="99">
+              <input class="form-control" style="width:90px;" type="number" id="face-threshold" min="70" max="99">
             </div>
             <div class="settings-row">
               <div><div class="label">Allow PIN Fallback</div><div class="hint">4-digit if face fails</div></div>
-              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              <label class="toggle"><input type="checkbox" id="face-pin"><span class="toggle-slider"></span></label>
+            </div>
+            <div style="margin-top:var(--space-4);">
+              <button class="btn btn-primary btn-sm" onclick="saveFaceSettings()">Save Face ID Config</button>
             </div>
             <div style="margin-top:var(--space-4); padding:var(--space-4); background:rgba(108,99,255,0.08); border-radius:var(--radius-md); border:1px solid rgba(108,99,255,0.2);">
               <div class="text-sm" style="color:var(--color-primary-light);">ℹ️ Face embeddings are stored encrypted. Raw photos are never stored permanently.</div>
@@ -403,6 +406,17 @@
         if (document.getElementById('att-shift-start')) document.getElementById('att-shift-start').value = settings.shift_start || '09:00';
         if (document.getElementById('att-grace-period')) document.getElementById('att-grace-period').value = settings.grace_period || 15;
 
+        // Load Face ID Settings
+        try {
+            const face = await API.get('/settings/face-id');
+            if (document.getElementById('face-enabled')) document.getElementById('face-enabled').checked = face.enabled;
+            if (document.getElementById('face-liveness')) document.getElementById('face-liveness').checked = face.liveness;
+            if (document.getElementById('face-threshold')) document.getElementById('face-threshold').value = face.threshold || 90;
+            if (document.getElementById('face-pin')) document.getElementById('face-pin').checked = face.fallback_pin;
+        } catch (e) {
+            console.warn('Face ID settings load error:', e);
+        }
+
         // Load Privacy Policy
         try {
             const policy = await API.get('/settings/privacy');
@@ -498,6 +512,19 @@
       try {
         await API.put('/settings/pwa', payload);
         toast('📱 App Settings saved successfully', 'success');
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function saveFaceSettings() {
+      const payload = {
+        enabled: document.getElementById('face-enabled').checked,
+        liveness: document.getElementById('face-liveness').checked,
+        threshold: parseInt(document.getElementById('face-threshold').value),
+        fallback_pin: document.getElementById('face-pin').checked
+      };
+      try {
+        await API.put('/settings/face-id', payload);
+        toast('🤖 Face ID Settings saved successfully', 'success');
       } catch (e) { toast(e.message, 'error'); }
     }
 

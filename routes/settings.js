@@ -157,6 +157,36 @@ router.put('/pwa', authMiddleware, requireRole('admin'), async (req, res) => {
     }
 });
 
+// ─── Face ID Settings ──────────────────────────────────────────────────────────
+router.get('/face-id', async (req, res) => {
+    try {
+        const { data: row } = await supabase.from('system_settings').select('value').eq('key', 'face_id_settings').maybeSingle();
+        if (!row) return res.json({ enabled: true, liveness: true, threshold: 90, fallback_pin: true });
+        res.json(JSON.parse(row.value));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/face-id', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const face_settings = req.body;
+        const { error } = await supabase.from('system_settings').upsert({ key: 'face_id_settings', value: JSON.stringify(face_settings) });
+        if (error) throw error;
+        
+        await supabase.from('audit_log').insert({
+            admin_id: req.user.id,
+            action: 'UPDATE_FACE_ID_SETTINGS',
+            target_table: 'system_settings',
+            details: `Updated Face ID Settings`
+        });
+        
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 // ─── Privacy Policy ──────────────────────────────────────────────────────────
 router.get('/privacy', async (req, res) => {
