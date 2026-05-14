@@ -78,6 +78,16 @@ router.put('/modules', authMiddleware, requireRole('admin'), async (req, res) =>
     res.json({ success: true, modules: updatedModules });
 });
 
+// GET /api/settings/public (Public regional settings)
+router.get('/public', async (req, res) => {
+    try {
+        const { data } = await supabase.from('system_settings').select('key, value').in('key', ['currency', 'phone_prefix', 'timezone']);
+        const settings = {};
+        if (data) data.forEach(r => settings[r.key] = r.value);
+        res.json(settings);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // PUT /api/settings/shift (Admin only)
 router.put('/shift', authMiddleware, requireRole('admin'), async (req, res) => {
     const { shift_start, shift_end, grace_period, require_reason, track_location } = req.body;

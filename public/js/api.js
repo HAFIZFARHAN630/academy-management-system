@@ -1,5 +1,7 @@
 /* ─── api.js — Fetch wrapper with JWT auth ──────────────────────────────── */
-const API_BASE = '/api';
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? '/api'
+    : 'https://academy-management-system-40i1.onrender.com/api';
 let APP_CONFIG = { currency: 'PKR', phone_prefix: '+92', timezone: 'Asia/Karachi' };
 console.log('🚀 ClickTake Academy System v2.6.3 Initialized');
 
@@ -13,7 +15,11 @@ async function apiFetch(path, options = {}) {
 
     const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
-    if (res.status === 401 && !path.includes('/auth/login')) {
+    // Handle session expiry but ONLY for protected routes
+    const publicPaths = ['/settings/public', '/settings/branding', '/settings/pwa', '/stats/public', '/auth/login'];
+    const isPublic = publicPaths.some(p => path.startsWith(p));
+
+    if (res.status === 401 && !isPublic) {
         localStorage.removeItem('ams_token');
         localStorage.removeItem('ams_user');
         window.location.href = '/login.html?session=expired';
@@ -124,7 +130,7 @@ function requireAuth(allowedRoles) {
 // ─── Branding System ─────────────────────────────────────────────────────────
 async function applyBranding() {
     try {
-        const settings = await API.get('/settings');
+        const settings = await API.get('/settings/public');
         if (settings.currency) APP_CONFIG.currency = settings.currency;
         if (settings.phone_prefix) APP_CONFIG.phone_prefix = settings.phone_prefix;
         if (settings.timezone) APP_CONFIG.timezone = settings.timezone;

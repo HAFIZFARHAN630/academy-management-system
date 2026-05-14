@@ -228,6 +228,19 @@
     </div>
 
     <div id="toast-container"></div>
+    <script>
+        if (localStorage.getItem('ams_version') !== '2.6.3') {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    for (let reg of regs) reg.unregister();
+                });
+            }
+            caches.keys().then(names => {
+                for (let name of names) caches.delete(name);
+            });
+            localStorage.setItem('ams_version', '2.6.3');
+        }
+    </script>
     <script src="/js/face-api.min.js?v=2.6.3"></script>
     <script src="/js/api.js?v=2.6.3"></script>
     <script src="/js/pwa.js?v=2.6.3"></script>
