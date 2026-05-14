@@ -151,7 +151,10 @@
                 const st = r.punch_in ? (r.punch_out ? 'Out' : r.status === 'late' ? 'Late' : 'In') : 'Absent';
                 const cls = { 'In': 'badge-green', 'Out': 'badge-blue', 'Late': 'badge-amber', 'Absent': 'badge-red' }[st];
                 const dur = r.punch_in && r.punch_out ? formatDuration(r.punch_out - r.punch_in) : r.punch_in ? `${Math.floor((Date.now() / 1000 - r.punch_in) / 60)}m (live)` : '—';
-                const methodBadge = r.is_manual ? '<span class="badge badge-amber">Admin</span>' : r.method === 'system_auto' ? '<span class="text-muted">Auto</span>' : (r.method === 'manual' ? '<span class="badge badge-purple" style="opacity:0.8">Manual</span>' : '—');
+                const methodBadge = r.is_manual ? '<span class="badge badge-amber">Admin</span>' : 
+                                   r.method === 'face' ? `<span class="badge badge-blue" title="Confidence: ${(r.confidence_score*100).toFixed(0)}%">📷 Face (${(r.confidence_score*100).toFixed(0)}%)</span>` :
+                                   r.method === 'system_auto' ? '<span class="text-muted">Auto</span>' : 
+                                   r.method === 'manual' ? '<span class="badge badge-purple" style="opacity:0.8">Manual</span>' : '—';
                 return `<tr><td><div class="flex items-center gap-3"><div class="avatar" style="background:var(--color-primary);color:#fff; font-size:0.85rem;">${avatarLetter(r.full_name)}</div><div><div class="font-semibold">${r.full_name}</div><div class="text-xs text-muted">${r.login_id}</div></div></div></td>
           <td><span class="badge ${cls}">${st}</span></td>
           <td>${formatTime(r.punch_in)}</td>
@@ -171,7 +174,10 @@
       ${d.map(r => {
                 const st = r.punch_in ? (r.punch_out ? 'Out' : r.status === 'late' ? 'Late' : 'In') : 'Absent';
                 const cls = { 'In': 'badge-green', 'Out': 'badge-blue', 'Late': 'badge-amber', 'Absent': 'badge-red' }[st];
-                const methodBadge = r.is_manual ? '<span class="badge badge-amber">Admin</span>' : r.method === 'system_auto' ? '<span class="text-muted">Auto</span>' : (r.method === 'manual' ? '<span class="badge badge-purple" style="opacity:0.8">Manual</span>' : '—');
+                const methodBadge = r.is_manual ? '<span class="badge badge-amber">Admin</span>' : 
+                                   r.method === 'face' ? `<span class="badge badge-blue" title="Confidence: ${(r.confidence_score*100).toFixed(0)}%">📷 Face (${(r.confidence_score*100).toFixed(0)}%)</span>` :
+                                   r.method === 'system_auto' ? '<span class="text-muted">Auto</span>' : 
+                                   r.method === 'manual' ? '<span class="badge badge-purple" style="opacity:0.8">Manual</span>' : '—';
                 return `<tr><td><div class="flex items-center gap-3"><div class="avatar" style="background:var(--color-student);color:#111;font-size:0.85rem;">${avatarLetter(r.full_name)}</div><div><div class="font-semibold">${r.full_name}</div><div class="text-xs text-muted">${r.login_id}</div></div></div></td>
           <td><span class="badge badge-blue text-xs">${r.class_name || '—'}</span></td>
           <td><span class="badge ${cls}">${st}</span></td>
@@ -192,7 +198,10 @@
                 const st = r.punch_in ? (r.punch_out ? 'Out' : 'In') : 'Absent';
                 const cls = { 'In': 'badge-green', 'Out': 'badge-blue', 'Absent': 'badge-red' }[st];
                 const dur = r.punch_in && r.punch_out ? formatDuration(r.punch_out - r.punch_in) : '—';
-                const methodBadge = r.is_manual ? '<span class="badge badge-amber">Admin</span>' : r.method === 'system_auto' ? '<span class="text-muted">Auto</span>' : (r.method === 'manual' ? '<span class="badge badge-purple" style="opacity:0.8">Manual</span>' : '—');
+                const methodBadge = r.is_manual ? '<span class="badge badge-amber">Admin</span>' : 
+                                   r.method === 'face' ? `<span class="badge badge-blue" title="Confidence: ${(r.confidence_score*100).toFixed(0)}%">📷 Face (${(r.confidence_score*100).toFixed(0)}%)</span>` :
+                                   r.method === 'system_auto' ? '<span class="text-muted">Auto</span>' : 
+                                   r.method === 'manual' ? '<span class="badge badge-purple" style="opacity:0.8">Manual</span>' : '—';
                 return `<tr><td><div class="flex items-center gap-3"><div class="avatar" style="background:var(--color-worker);color:#111;font-size:0.85rem;">${avatarLetter(r.full_name)}</div><div><div class="font-semibold">${r.full_name}</div><div class="text-xs text-muted">${r.login_id}</div></div></div></td>
           <td><span class="badge ${cls}">${st}</span></td>
           <td>${formatTime(r.punch_in)}</td>

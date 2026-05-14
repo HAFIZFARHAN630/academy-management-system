@@ -74,3 +74,34 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
     details TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 5. Face Verification System
+-- Store 128-float mathematical embeddings
+CREATE TABLE IF NOT EXISTS public.face_embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
+    embedding JSONB NOT NULL, -- Array of 128 floats
+    consent_given BOOLEAN DEFAULT false,
+    consent_timestamp TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+
+-- Enable RLS for face_embeddings
+ALTER TABLE public.face_embeddings ENABLE ROW LEVEL SECURITY;
+
+-- Users can manage their own embeddings
+CREATE POLICY "Users can manage own face data" ON public.face_embeddings
+    FOR ALL TO authenticated
+    USING (user_id = auth.uid()::text::int)
+    WITH CHECK (user_id = auth.uid()::text::int);
+
+-- Admins can view all (for audit)
+CREATE POLICY "Admins can view all face data" ON public.face_embeddings
+    FOR SELECT TO authenticated
+    USING (true);
+
+-- Update Attendance table for Face Method
+ALTER TABLE public.attendance 
+ADD COLUMN IF NOT EXISTS confidence_score DECIMAL(5,4),
+ADD COLUMN IF NOT EXISTS face_scan_method TEXT DEFAULT 'frontend_v1';

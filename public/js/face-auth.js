@@ -92,6 +92,16 @@ function createEnrollmentModal() {
                     <div id="enroll-progress" style="position: absolute; bottom: 0; left: 0; height: 10px; background: #2ed573; width: 0%; transition: width 0.3s;"></div>
                 </div>
                 <div id="enroll-status" style="margin-top: 15px; font-weight: bold; color: var(--color-primary);">Initializing camera...</div>
+                
+                <div id="consent-container" style="margin-top: 20px; text-align: left; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; display: none;">
+                    <label class="flex items-center gap-2 cursor-pointer" style="font-size: 0.8rem;">
+                        <input type="checkbox" id="face-consent" style="width: 18px; height: 18px;">
+                        <span>I consent to the Academy using facial recognition for attendance. I can withdraw this at any time.</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer" id="enroll-footer" style="display: none;">
+                <button class="btn btn-primary" id="btn-start-enroll" onclick="processEnrollment()" disabled>Confirm & Register Face</button>
             </div>
         </div>
     `;
@@ -99,11 +109,36 @@ function createEnrollmentModal() {
     return document.getElementById('video-container');
 }
 
-window.closeEnrollmentModal = function () {
-    stopCamera();
-    const modal = document.getElementById('face-enroll-modal');
-    if (modal) modal.remove();
-};
+let tempEmbedding = null;
+
+window.processEnrollment = async function() {
+    const consent = document.getElementById('face-consent').checked;
+    if (!consent) return toast('Please provide consent first', 'error');
+
+    const statusText = document.getElementById('enroll-status');
+    const btn = document.getElementById('btn-start-enroll');
+    
+    btn.disabled = true;
+    btn.textContent = "Saving Profile...";
+
+    try {
+        await API.post('/attendance/register-face', { embedding: tempEmbedding, consent: true });
+        statusText.textContent = "✅ Enrollment complete!";
+        statusText.style.color = "#2ed573";
+
+        setTimeout(() => {
+            closeEnrollmentModal();
+            toast('Face setup complete!', 'success');
+            location.reload(); 
+        }, 1500);
+    } catch (err) {
+        statusText.textContent = "Error saving profile.";
+        statusText.style.color = "#ff4757";
+        toast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = "Retry Registration";
+    }
+}
 
 async function executeEnrollment(userId = null, callback = null) {
     try {
@@ -120,12 +155,11 @@ async function executeEnrollment(userId = null, callback = null) {
 
         statusText.textContent = "Please look straight...";
 
-        // Capture 5 frames to average embeddings
         let capturedEmbeddings = [];
         let captureCount = 0;
 
         const captureInterval = setInterval(async () => {
-            if (!streamRef) { clearInterval(captureInterval); return; } // canceled
+            if (!streamRef) { clearInterval(captureInterval); return; }
 
             const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })).withFaceLandmarks().withFaceDescriptor();
 
@@ -137,8 +171,11 @@ async function executeEnrollment(userId = null, callback = null) {
 
                 if (captureCount >= 5) {
                     clearInterval(captureInterval);
-                    statusText.textContent = "Processing face profile...";
+                    statusText.textContent = "Face analyzed! Provide consent to continue.";
                     progress.style.width = '100%';
+                    
+                    // Stop camera after capture
+                    stopCamera();
 
                     // Average the descriptor
                     let avgDescriptor = new Float32Array(128).fill(0);
@@ -146,39 +183,133 @@ async function executeEnrollment(userId = null, callback = null) {
                         for (let i = 0; i < 128; i++) avgDescriptor[i] += desc[i];
                     });
                     for (let i = 0; i < 128; i++) avgDescriptor[i] /= capturedEmbeddings.length;
+                    tempEmbedding = Array.from(avgDescriptor);
 
-                    const finalEmbedding = Array.from(avgDescriptor);
-
-                    try {
-                        statusText.textContent = "Saving securely...";
-                        const url = userId ? `/users/face-enroll/${userId}` : '/users/face-enroll';
-                        await API.post(url, { embedding: finalEmbedding });
-                        statusText.textContent = "✅ Enrollment complete!";
-                        statusText.style.color = "#2ed573";
-
-                        setTimeout(() => {
-                            closeEnrollmentModal();
-                            toast('Face setup complete!', 'success');
-                            if (callback) callback();
-                            else location.reload(); 
-                        }, 1500);
-
-                    } catch (err) {
-                        statusText.textContent = "Error saving profile.";
-                        statusText.style.color = "#ff4757";
-                        toast(err.message, 'error');
-                        setTimeout(closeEnrollmentModal, 2000);
-                    }
+                    // Show consent and footer
+                    document.getElementById('consent-container').style.display = 'block';
+                    document.getElementById('enroll-footer').style.display = 'flex';
+                    
+                    const consentCheck = document.getElementById('face-consent');
+                    const enrollBtn = document.getElementById('btn-start-enroll');
+                    consentCheck.addEventListener('change', () => {
+                        enrollBtn.disabled = !consentCheck.checked;
+                    });
                 }
             } else {
                 statusText.textContent = "No face detected. Move closer.";
             }
-        }, 150); // Check every 150ms
+        }, 200);
 
     } catch (e) {
-        toast('Camera/Face API failed: ' + e.message, 'error');
+        toast('Face API failed: ' + e.message, 'error');
         closeEnrollmentModal();
     }
+}
+
+// ── Face Punch-In/Out Logic ──
+async function executeFacePunch() {
+    let overlay = document.getElementById('face-punch-modal');
+    if (overlay) overlay.remove();
+
+    overlay = document.createElement('div');
+    overlay.id = 'face-punch-modal';
+    overlay.className = 'modal-overlay open';
+    overlay.innerHTML = `
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3>📷 Face Attendance</h3>
+                <button class="btn-close" onclick="closePunchModal()">✕</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div style="width: 280px; height: 280px; margin: 0 auto; border-radius: 20px; overflow: hidden; border: 3px solid var(--color-primary); position: relative; background: #000;" id="punch-video-container">
+                    <div id="punch-status-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 1.1rem;">Initializing...</div>
+                </div>
+                <div id="punch-msg" style="margin-top: 15px; font-weight: 500;">Please position your face in the frame.</div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const msgEl = document.getElementById('punch-msg');
+    const overlayEl = document.getElementById('punch-status-overlay');
+
+    try {
+        await loadFaceModels();
+        const video = await startCamera();
+        document.getElementById('punch-video-container').appendChild(video);
+        overlayEl.textContent = "Scanning...";
+
+        let lastScanTime = 0;
+        const scanInterval = setInterval(async () => {
+            if (!streamRef) { clearInterval(scanInterval); return; }
+            
+            // Limit scan rate
+            if (Date.now() - lastScanTime < 500) return;
+            lastScanTime = Date.now();
+
+            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.6 })).withFaceLandmarks().withFaceDescriptor();
+
+            if (detections) {
+                overlayEl.innerHTML = '<span class="spinner-sm"></span> Matching...';
+                msgEl.textContent = "Face detected! Verifying...";
+                
+                try {
+                    const embedding = Array.from(detections.descriptor);
+                    
+                    // Get location if possible
+                    let lat = null, lng = null;
+                    try {
+                        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 }));
+                        lat = pos.coords.latitude;
+                        lng = pos.coords.longitude;
+                    } catch (e) { console.warn('Location failed for face punch'); }
+
+                    const res = await API.post('/attendance/face-punch', { 
+                        embedding, 
+                        lat, 
+                        lng, 
+                        device: navigator.userAgent 
+                    });
+
+                    clearInterval(scanInterval);
+                    overlayEl.innerHTML = '✅ Verified';
+                    overlayEl.style.background = 'rgba(46, 213, 115, 0.4)';
+                    msgEl.innerHTML = `<span style="color:#2ed573">Welcome! ${res.action === 'punch_in' ? 'Punched In' : 'Punched Out'} successfully.</span>`;
+                    
+                    toast(`Face Match: ${(parseFloat(res.confidence)*100).toFixed(1)}%`, 'success');
+                    
+                    setTimeout(() => {
+                        closePunchModal();
+                        if (typeof loadDashboard === 'function') loadDashboard();
+                        else location.reload();
+                    }, 2000);
+
+                } catch (err) {
+                    overlayEl.innerHTML = '❌ Retry';
+                    overlayEl.style.background = 'rgba(255, 71, 87, 0.4)';
+                    msgEl.innerHTML = `<span style="color:#ff4757">${err.message}</span>`;
+                    setTimeout(() => {
+                        overlayEl.innerHTML = 'Scanning...';
+                        overlayEl.style.background = 'rgba(0,0,0,0.4)';
+                        msgEl.textContent = "Position face for retry...";
+                    }, 2000);
+                }
+            } else {
+                overlayEl.textContent = "Scanning...";
+                msgEl.textContent = "No face detected. Align properly.";
+            }
+        }, 300);
+
+    } catch (e) {
+        toast(e.message, 'error');
+        closePunchModal();
+    }
+}
+
+window.closePunchModal = function() {
+    stopCamera();
+    const modal = document.getElementById('face-punch-modal');
+    if (modal) modal.remove();
 }
 
 // Function checking if user needs enrollment

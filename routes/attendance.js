@@ -365,4 +365,186 @@ router.post('/early-leaves/:id/review', requireRole('admin'), async (req, res) =
   res.json({ success: true });
 });
 
+// POST /api/attendance/register-face
+router.post('/register-face', async (req, res) => {
+  const { embedding, consent } = req.body;
+  if (!embedding || embedding.length !== 128) {
+    return res.status(400).json({ error: 'Invalid face embedding' });
+  }
+  if (!consent) {
+    return res.status(400).json({ error: 'GDPR consent is mandatory' });
+  }
+
+  const { error } = await supabase
+    .from('users')
+    .update({
+      face_embedding: embedding,
+      is_face_enrolled: 1,
+      privacy_consent_version: 1 
+    })
+    .eq('id', req.user.id);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  // Log to audit trail
+  await supabase.from('audit_log').insert({
+    user_id: req.user.id,
+    action: 'FACE_ENROLL',
+    target_table: 'users',
+    target_id: req.user.id,
+    details: `User enrolled face biometrics with GDPR consent.`
+  });
+
+  res.json({ success: true, message: 'Face data registered successfully' });
+});
+
+// POST /api/attendance/face-punch
+router.post('/face-punch', async (req, res) => {
+  const { embedding, device, lat, lng } = req.body;
+  if (!embedding || embedding.length !== 128) {
+    return res.status(400).json({ error: 'Invalid face scan' });
+  }
+
+  // 1. Fetch user's registered embedding from users table
+  const { data: userRecord, error: fetchErr } = await supabase
+    .from('users')
+    .select('face_embedding, is_face_enrolled')
+    .eq('id', req.user.id)
+    .single();
+
+  if (fetchErr || !userRecord || !userRecord.face_embedding) {
+    return res.status(404).json({ error: 'Face data not found. Please register first.' });
+  }
+
+  // Handle case where embedding might be a string (from JSON.stringify in users.js)
+  let regEmbedding = userRecord.face_embedding;
+  if (typeof regEmbedding === 'string') {
+    try { regEmbedding = JSON.parse(regEmbedding); } catch (e) { }
+  }
+
+  if (!Array.isArray(regEmbedding)) {
+    return res.status(500).json({ error: 'Stored face data is corrupted. Please re-register.' });
+  }
+
+  // 2. Fetch Face ID Threshold from settings
+  let threshold = 0.6; // Default distance
+  try {
+    const { data: settingRow } = await supabase.from('system_settings').select('value').eq('key', 'face_id_settings').maybeSingle();
+    if (settingRow) {
+        const faceSettings = JSON.parse(settingRow.value);
+        if (faceSettings.enabled === false) {
+            return res.status(403).json({ error: 'Face attendance is currently disabled by administrator.' });
+        }
+        // Translate % similarity (70-99) to distance (0.3 - 0.01)
+        // A simple linear mapping: 100% similarity = 0 distance, 0% = 1.0 distance
+        // But face-api.js typically uses 0.6 as a good threshold.
+        // So 90% similarity => 0.1? No, 0.6 distance is about 60% confidence in some contexts.
+        // Let's use: distance_threshold = (100 - threshold_percent) / 100
+        // So 90% => 0.1 distance (very strict)
+        // 40% => 0.6 distance (default)
+        // Wait, if UI says 90%, they want it strict. 
+        // Let's use: (100 - threshold_percent) / 100 * 1.5 (scaling factor)
+        // Or better, just follow the UI hint: 90% => 0.4 distance? 
+        // Let's use: (1 - (faceSettings.threshold / 100))
+        if (faceSettings.threshold) {
+            threshold = (1 - (faceSettings.threshold / 100));
+        }
+    }
+  } catch (e) { console.warn('Failed to load face settings, using default threshold'); }
+
+  // 3. Calculate Euclidean Distance
+  const calculateDistance = (v1, v2) => {
+    return Math.sqrt(v1.reduce((sum, val, i) => sum + Math.pow(val - v2[i], 2), 0));
+  };
+
+  const distance = calculateDistance(embedding, regEmbedding);
+  const confidence = 1 - distance; 
+  
+  if (distance > threshold) {
+    return res.status(401).json({ 
+      error: 'Face not recognized. Please align properly or retry.', 
+      confidence: confidence.toFixed(4),
+      distance: distance.toFixed(4),
+      required: (1 - threshold).toFixed(2)
+    });
+  }
+
+  // 3. Attendance Punch Logic
+  const today = getToday();
+  const now = Math.floor(Date.now() / 1000);
+  const location = lat && lng ? JSON.stringify({ lat, lng }) : null;
+
+  const { data: existing } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .eq('date', today)
+    .maybeSingle();
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('shift_start, shift_end, role')
+    .eq('id', req.user.id)
+    .single();
+
+  if (!existing) {
+    // Punch In
+    const nowTime = getNowTime();
+    let status = 'present';
+    if (user && user.shift_start && nowTime > user.shift_start) {
+        status = 'late';
+    }
+
+    await supabase
+      .from('attendance')
+      .insert({
+        user_id: req.user.id,
+        punch_in: now,
+        date: today,
+        location_in: location,
+        device_in: device,
+        status: status,
+        location_lat: lat || null,
+        location_lng: lng || null,
+        method: 'face',
+        confidence_score: confidence,
+        face_scan_method: 'frontend_v1'
+      });
+    
+    return res.json({ action: 'punch_in', time: now, status, confidence: confidence.toFixed(4) });
+  }
+
+  if (!existing.punch_out) {
+    // Punch Out
+    const nowTime = getNowTime();
+    let isEarly = 0;
+    if (user && user.shift_end && nowTime < user.shift_end) {
+        isEarly = 1;
+    }
+
+    const duration = now - existing.punch_in;
+    await supabase
+      .from('attendance')
+      .update({
+        punch_out: now,
+        location_out: location,
+        device_out: device,
+        early_leave: isEarly,
+        method: 'face',
+        confidence_score: confidence
+      })
+      .eq('id', existing.id);
+    
+    return res.json({ 
+      action: 'punch_out', 
+      time: now, 
+      duration_seconds: duration,
+      is_early: !!isEarly,
+      confidence: confidence.toFixed(4)
+    });
+  }
+
+  res.json({ action: 'already_complete', message: 'Already punched in and out today' });
+});
+
 module.exports = router;

@@ -91,13 +91,19 @@
                 <div id="punch-status"><span class="badge"
                         style="background:rgba(255,107,129,0.15);color:var(--color-accent-rose);padding:4px 12px;font-size:0.85rem;">🔴
                         Off Duty</span></div>
-                <div class="flex gap-3 justify-center" style="margin-top:var(--space-4);" id="punch-actions">
-                    <button class="btn btn-primary" id="btn-punch-in"
-                        style="flex:1;max-width:160px;padding:12px;font-size:1rem;background:var(--color-accent-green);color:#fff;"
-                        onclick="smartPunch('in')">🟢 PUNCH IN</button>
-                    <button class="btn btn-danger" id="btn-punch-out"
-                        style="flex:1;max-width:160px;padding:12px;font-size:1rem;background:var(--color-accent-rose);color:#fff;"
-                        onclick="smartPunch('out')">🔴 PUNCH OUT</button>
+                <div class="flex flex-col gap-3" style="margin-top:var(--space-4);">
+                    <button class="btn btn-primary" id="btn-face-punch"
+                        style="width:100%; padding:15px; font-size:1.1rem; background:linear-gradient(135deg, var(--color-worker), var(--color-accent-teal)); color:#111; border:none; box-shadow: 0 4px 15px rgba(247, 183, 49, 0.3);"
+                        onclick="executeFacePunch()">📷 FACE PUNCH IN/OUT</button>
+                    
+                    <div class="flex gap-3 justify-center" id="punch-actions">
+                        <button class="btn btn-secondary btn-sm" id="btn-punch-in"
+                            style="flex:1; padding:10px; font-size:0.85rem;"
+                            onclick="smartPunch('in')">Manual In</button>
+                        <button class="btn btn-secondary btn-sm" id="btn-punch-out"
+                            style="flex:1; padding:10px; font-size:0.85rem;"
+                            onclick="smartPunch('out')">Manual Out</button>
+                    </div>
                 </div>
                 <div class="punch-timeline-container" style="margin-top:var(--space-4);">
                     <div class="text-xs text-muted uppercase font-bold" style="margin-bottom:8px;letter-spacing:1px;">Today's Activity</div>
@@ -197,6 +203,17 @@
                         <option value="Urdu">Urdu</option>
                     </select>
                 </div>
+                
+                <!-- Face Data Section -->
+                <div style="margin-top: 20px; padding: 15px; background: rgba(247, 183, 49, 0.1); border: 1px solid rgba(247, 183, 49, 0.2); border-radius: 12px;">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 style="margin: 0; font-size: 0.95rem;">📸 Face Attendance</h4>
+                            <p class="text-xs text-secondary" style="margin: 4px 0 0 0;" id="face-status-text">Not registered</p>
+                        </div>
+                        <button class="btn btn-sm btn-primary" id="btn-enroll-face" onclick="executeEnrollment()">Setup Face</button>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeAllModals()">Cancel</button>
@@ -277,22 +294,26 @@
 
                 const btnIn = document.getElementById('btn-punch-in');
                 const btnOut = document.getElementById('btn-punch-out');
+                const btnFace = document.getElementById('btn-face-punch');
 
                 if (!myPunch || !myPunch.punch_in) {
                     st.innerHTML = '<span class="badge" style="background:rgba(255,107,129,0.15);color:var(--color-accent-rose);padding:4px 12px;font-size:0.85rem;">🔴 Off Duty</span>';
                     btnIn.disabled = false; btnIn.style.opacity = '1';
                     btnOut.disabled = true; btnOut.style.opacity = '0.4'; btnOut.title = 'Check In First';
-                    hist.innerHTML = '<div class="text-sm text-muted italic">Tap PUNCH IN to start your session today</div>';
+                    btnFace.disabled = false; btnFace.style.opacity = '1';
+                    hist.innerHTML = '<div class="text-sm text-muted italic">Tap FACE PUNCH or Manual In to start</div>';
                 } else if (!myPunch.punch_out) {
                     st.innerHTML = '<span class="badge" style="background:rgba(46,213,115,0.15);color:var(--color-accent-green);padding:4px 12px;font-size:0.85rem;">🟢 On Duty</span>';
                     btnIn.disabled = true; btnIn.style.opacity = '0.4'; btnIn.title = 'Already Checked In';
                     btnOut.disabled = false; btnOut.style.opacity = '1';
+                    btnFace.disabled = false; btnFace.style.opacity = '1';
                     hist.innerHTML = `<div class="flex items-center gap-2 text-sm"><span style="color:var(--color-accent-green)">✅</span> Punched in at <b>${formatTime(myPunch.punch_in)}</b></div>`;
                     updateLiveDuration(myPunch.punch_in);
                 } else {
                     st.innerHTML = '<span class="badge" style="background:rgba(108,99,255,0.15);color:var(--color-primary-light);padding:4px 12px;font-size:0.85rem;">🏁 Shift Completed</span>';
                     btnIn.disabled = true; btnIn.style.opacity = '0.4'; btnIn.title = 'Shift Completed';
                     btnOut.disabled = true; btnOut.style.opacity = '0.4'; btnOut.title = 'Shift Completed';
+                    btnFace.disabled = true; btnFace.style.opacity = '0.4'; btnFace.title = 'Shift Completed';
                     hist.innerHTML = `
                         <div class="flex items-center gap-2 text-sm"><span style="color:var(--color-accent-green)">✅</span> IN: ${formatTime(myPunch.punch_in)}</div>
                         <div class="flex items-center gap-2 text-sm"><span style="color:var(--color-accent-rose)">🔴</span> OUT: ${formatTime(myPunch.punch_out)}</div>
@@ -489,6 +510,21 @@
                     preview.innerHTML = `<img src="${data.photo}" style="width:100%; height:100%; object-fit:cover;">`;
                 } else {
                     preview.textContent = avatarLetter(data.full_name || 'U');
+                }
+                
+                // Update Face Status
+                const faceText = document.getElementById('face-status-text');
+                const faceBtn = document.getElementById('btn-enroll-face');
+                if (data.is_face_enrolled) {
+                    faceText.textContent = "✅ Face Profile Registered";
+                    faceText.style.color = "#2ed573";
+                    faceBtn.textContent = "Re-Enroll Face";
+                    faceBtn.classList.replace('btn-primary', 'btn-secondary');
+                } else {
+                    faceText.textContent = "❌ Not Registered (Required for fast punch)";
+                    faceText.style.color = "#ff4757";
+                    faceBtn.textContent = "Setup Face";
+                    faceBtn.classList.replace('btn-secondary', 'btn-primary');
                 }
                 
                 document.getElementById('profile-modal').classList.add('open');
