@@ -3,9 +3,9 @@
     // Only run if user is logged in
     if (!localStorage.getItem('ams_token')) return;
 
-    // Default timeout is 4.5 minutes (270 seconds). Will be overridden by settings if available.
-    let timeoutSeconds = 270; 
-    let warningThreshold = 30; // seconds before timeout to show warning
+    // Default timeout is 30 minutes (1800 seconds). Will be overridden by settings if available.
+    let timeoutSeconds = 1800; 
+    let warningThreshold = 60; // seconds before timeout to show warning
     
     let idleTime = 0;
     let idleInterval;
@@ -65,7 +65,7 @@
             clearInterval(idleInterval);
             localStorage.removeItem('ams_token');
             localStorage.removeItem('ams_user');
-            window.location.href = '/login.html?session=expired';
+            window.location.href = '/?session=expired';
         }
     }
 
@@ -74,9 +74,7 @@
         try {
             // Try fetching real timeout from settings (converted to seconds)
             // Session Timeout is usually in minutes in the settings UI.
-            const settings = await fetch('https://academy-management-system-40i1.onrender.com/api/settings', {
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('ams_token') }
-            }).then(res => res.json());
+            const settings = await API.get('/settings');
 
             // Assuming session timeout is in settings (if not, we keep default 270s)
             // But from settings.html, they had a UI for it. If not in API, we default to 4.5m.
