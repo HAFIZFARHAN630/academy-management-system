@@ -3,8 +3,7 @@ let pwaReady = false;
 
 async function initPWA() {
     try {
-        const response = await fetch('/api/settings/pwa');
-        const settings = await response.json();
+        const settings = await API.get('/settings/pwa');
         
         if (!settings.enabled) return;
 
@@ -30,17 +29,20 @@ async function initPWA() {
 
         // Trigger the App Selection Modal
         window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('✅ beforeinstallprompt fired');
             e.preventDefault();
             deferredPrompt = e;
             showAppSelectionModal(settings, isDesktop);
         });
 
-        // Fallback for iOS/Desktop where beforeinstallprompt might not fire or is not supported
+        // Fallback for iOS/Desktop or if beforeinstallprompt is delayed
         setTimeout(() => {
-            if (!sessionStorage.getItem('app-choice-shown') && !document.getElementById('app-selection-modal')) {
+            const isInstalled = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+            if (!isInstalled && !document.getElementById('app-selection-modal')) {
+                console.log('⏰ Triggering PWA modal via timeout');
                 showAppSelectionModal(settings, isDesktop);
             }
-        }, 2000);
+        }, 1500);
 
     } catch (err) {
         console.error('Failed to init PWA', err);
@@ -171,7 +173,6 @@ function showAppSelectionModal(settings, isDesktop) {
     `;
     
     document.body.appendChild(modal);
-    sessionStorage.setItem('app-choice-shown', '1');
 
     const closeModal = () => modal.remove();
 
