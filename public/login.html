@@ -5,10 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login — ClickTake Academy</title>
-    <link rel="manifest" href="/manifest.json?v=2.6.5">
-    <link rel="stylesheet" href="/css/design-system.css?v=2.6.5">
-    <link rel="stylesheet" href="/css/components.css?v=2.6.5">
-    <link rel="stylesheet" href="/css/animations.css?v=2.6.5">
+    <link rel="manifest" href="/manifest.json?v=2.6.6">
+    <link rel="stylesheet" href="/css/design-system.css?v=2.6.6">
+    <link rel="stylesheet" href="/css/components.css?v=2.6.6">
+    <link rel="stylesheet" href="/css/animations.css?v=2.6.6">
     <style>
         body {
             display: flex;
@@ -229,7 +229,7 @@
 
     <div id="toast-container"></div>
     <script>
-        if (localStorage.getItem('ams_version') !== '2.6.5') {
+        if (localStorage.getItem('ams_version') !== '2.6.6') {
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(regs => {
                     for (let reg of regs) reg.unregister();
@@ -238,12 +238,12 @@
             caches.keys().then(names => {
                 for (let name of names) caches.delete(name);
             });
-            localStorage.setItem('ams_version', '2.6.5');
+            localStorage.setItem('ams_version', '2.6.6');
         }
     </script>
-    <script src="/js/face-api.min.js?v=2.6.5"></script>
-    <script src="/js/api.js?v=2.6.5"></script>
-    <script src="/js/pwa.js?v=2.6.5"></script>
+    <script src="/js/face-api.min.js?v=2.6.6"></script>
+    <script src="/js/api.js?v=2.6.6"></script>
+    <script src="/js/pwa.js?v=2.6.6"></script>
     <script>
         const params = new URLSearchParams(location.search);
         const role = params.get('role') || 'teacher';
