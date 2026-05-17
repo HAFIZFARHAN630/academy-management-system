@@ -19,6 +19,52 @@ app.use((req, res, next) => {
     res.setHeader('Expires', '0');
     next();
 });
+app.get('/manifest.json', async (req, res) => {
+    try {
+        const { data: row } = await supabase
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'pwa_settings')
+            .maybeSingle();
+            
+        const pwa = row ? JSON.parse(row.value) : {};
+        
+        const { data: brandingRow } = await supabase
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'branding')
+            .maybeSingle();
+        const branding = brandingRow ? JSON.parse(brandingRow.value) : {};
+
+        const manifest = {
+          "id": "com.academy.management.system",
+          "name": branding.name || "Academy Management System",
+          "short_name": branding.name ? branding.name.split(' ')[0] : "Academy",
+          "description": branding.tagline || "Academy Management System",
+          "start_url": "/",
+          "display": "standalone",
+          "background_color": "#ffffff",
+          "theme_color": (branding.colors && branding.colors.primary) || "#6C63FF",
+          "icons": [
+            {
+              "src": pwa.icon || "/icons/icon-192x192.png",
+              "sizes": "192x192",
+              "type": "image/png"
+            },
+            {
+              "src": pwa.icon || "/icons/icon-512x512.png",
+              "sizes": "512x512",
+              "type": "image/png"
+            }
+          ]
+        };
+        res.setHeader('Content-Type', 'application/json');
+        res.json(manifest);
+    } catch (e) {
+        res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
+    }
+});
+
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 // ─── API Routes ───────────────────────────────────────────────────────────────

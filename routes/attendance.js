@@ -6,6 +6,14 @@ const { authMiddleware, requireRole } = require('../middleware/auth');
 const getToday = () => new Date().toLocaleDateString('en-CA', { timeZone: process.env.TIMEZONE || 'Asia/Karachi' });
 const getNowTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: process.env.TIMEZONE || 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
 
+// In-memory caches to speed up face punch requests and reduce DB load
+let enrolledUsersCache = null;
+let lastCacheTime = 0;
+const CACHE_TTL = 30000; // 30 seconds cache TTL
+
+let faceSettingsCache = null;
+let lastFaceSettingsTime = 0;
+
 // POST /api/attendance/public-face-punch
 router.post('/public-face-punch', async (req, res) => {
   const { embedding, device, lat, lng } = req.body;
@@ -13,31 +21,57 @@ router.post('/public-face-punch', async (req, res) => {
     return res.status(400).json({ error: 'Invalid face scan' });
   }
 
-  // 1. Fetch all enrolled users
-  const { data: enrolledUsers, error: fetchErr } = await supabase
-    .from('users')
-    .select('id, full_name, face_embedding, shift_start, shift_end, role')
-    .eq('is_face_enrolled', 1)
-    .eq('status', 'active');
+  // 1. Fetch all enrolled users (cached)
+  let enrolledUsers = [];
+  const nowMs = Date.now();
+  if (enrolledUsersCache && (nowMs - lastCacheTime < CACHE_TTL)) {
+    enrolledUsers = enrolledUsersCache;
+  } else {
+    const { data, error: fetchErr } = await supabase
+      .from('users')
+      .select('id, full_name, face_embedding, shift_start, shift_end, role')
+      .eq('is_face_enrolled', 1)
+      .eq('status', 'active');
+    
+    if (!fetchErr && data) {
+      enrolledUsers = data;
+      enrolledUsersCache = data;
+      lastCacheTime = nowMs;
+    } else if (enrolledUsersCache) {
+      // Fallback to cache if database error
+      enrolledUsers = enrolledUsersCache;
+    } else {
+      return res.status(500).json({ error: 'Failed to fetch enrolled users' });
+    }
+  }
 
-  if (fetchErr || !enrolledUsers || enrolledUsers.length === 0) {
+  if (enrolledUsers.length === 0) {
     return res.status(404).json({ error: 'No users with enrolled face data found.' });
   }
 
-  // 2. Fetch Face ID Threshold from settings
-  let threshold = 0.6;
-  try {
+  // 2. Fetch Face ID Settings (cached)
+  let faceSettings = { enabled: true, liveness: true, threshold: 90, fallback_pin: true };
+  if (faceSettingsCache && (nowMs - lastFaceSettingsTime < CACHE_TTL)) {
+    faceSettings = faceSettingsCache;
+  } else {
     const { data: settingRow } = await supabase.from('system_settings').select('value').eq('key', 'face_id_settings').maybeSingle();
     if (settingRow) {
-        const faceSettings = JSON.parse(settingRow.value);
-        if (faceSettings.enabled === false) {
-            return res.status(403).json({ error: 'Face attendance is disabled.' });
-        }
-        if (faceSettings.threshold) {
-            threshold = (1 - (faceSettings.threshold / 100));
-        }
+      try {
+        faceSettings = JSON.parse(settingRow.value);
+        faceSettingsCache = faceSettings;
+        lastFaceSettingsTime = nowMs;
+      } catch (e) {}
     }
-  } catch (e) { console.warn('Failed to load face settings, using default'); }
+  }
+
+  if (faceSettings.enabled === false) {
+    return res.status(403).json({ error: 'Face attendance is disabled.' });
+  }
+
+  let threshold = 0.6;
+  if (faceSettings.threshold) {
+    threshold = (1 - (faceSettings.threshold / 100));
+  }
 
   // 3. Find closest match
   const calculateDistance = (v1, v2) => Math.sqrt(v1.reduce((sum, val, i) => sum + Math.pow(val - v2[i], 2), 0));

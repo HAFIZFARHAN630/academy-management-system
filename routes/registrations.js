@@ -58,28 +58,26 @@ router.post('/', async (req, res) => {
             signature
         );
 
-        // Send confirmation email
+        // Send confirmation email in background to avoid blocking response
         if (parent_details.email) {
-            try {
-                await transporter.sendMail({
-                    from: `"ClickTake Academy" <${process.env.GMAIL_USER}>`,
-                    to: parent_details.email,
-                    subject: 'Application Received - ClickTake Academy',
-                    html: `
-                        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-                            <h2 style="color: #6C63FF; text-align: center;">Application Received!</h2>
-                            <p>Dear ${parent_details.full_name},</p>
-                            <p>Thank you for submitting an application for <strong>${student_details.full_name}</strong>.</p>
-                            <p>Your application is currently <strong style="color: #F7B731;">PENDING</strong> review by our administration team. You will receive another email with login credentials once the application is approved.</p>
-                            <br>
-                            <p>Best Regards,</p>
-                            <p><strong>ClickTake Academy Admissions</strong></p>
-                        </div>
-                    `
-                });
-            } catch (mailErr) {
+            transporter.sendMail({
+                from: `"ClickTake Academy" <${process.env.GMAIL_USER}>`,
+                to: parent_details.email,
+                subject: 'Application Received - ClickTake Academy',
+                html: `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                        <h2 style="color: #6C63FF; text-align: center;">Application Received!</h2>
+                        <p>Dear ${parent_details.full_name},</p>
+                        <p>Thank you for submitting an application for <strong>${student_details.full_name}</strong>.</p>
+                        <p>Your application is currently <strong style="color: #F7B731;">PENDING</strong> review by our administration team. You will receive another email with login credentials once the application is approved.</p>
+                        <br>
+                        <p>Best Regards,</p>
+                        <p><strong>ClickTake Academy Admissions</strong></p>
+                    </div>
+                `
+            }).catch(mailErr => {
                 console.error('[EMAIL ERROR]', mailErr);
-            }
+            });
         }
         
         console.log(`[REGISTRATION] New application received for ${student_details.full_name}`);

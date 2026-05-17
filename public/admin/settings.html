@@ -201,6 +201,18 @@
               <div><div class="label">Force App Usage</div><div class="hint">Encourage installed users to use app</div></div>
               <label class="toggle"><input type="checkbox" id="pwa-force"><span class="toggle-slider"></span></label>
             </div>
+            <div class="form-group" style="margin-top: var(--space-4); border-top: 1px solid var(--border-subtle); padding-top: var(--space-4);">
+              <label class="form-label">App Icon (Square, min 512x512px)</label>
+              <div style="display: flex; gap: 15px; align-items: center; margin-top: 8px;">
+                <img id="pwa-icon-preview" src="/icons/icon-512x512.png" style="width: 64px; height: 64px; border-radius: 12px; border: 1px solid var(--border-subtle); object-fit: cover;">
+                <div style="flex: 1;">
+                  <input type="file" id="pwa-icon-input" accept="image/png, image/jpeg" style="display: none;" onchange="uploadPWAIcon(this)">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pwa-icon-input').click()">📤 Upload New Icon</button>
+                  <input type="hidden" id="pwa-icon-url" value="">
+                  <div class="hint" style="margin-top: 5px;">Recommended: transparent square PNG image.</div>
+                </div>
+              </div>
+            </div>
             <div style="margin-top:var(--space-5);">
               <button class="btn btn-primary btn-sm" onclick="savePWASettings()">Save App Settings</button>
             </div>
@@ -400,6 +412,10 @@
             if (document.getElementById('pwa-enabled')) document.getElementById('pwa-enabled').checked = pwa.enabled;
             if (document.getElementById('pwa-prompt')) document.getElementById('pwa-prompt').checked = pwa.prompt_install;
             if (document.getElementById('pwa-force')) document.getElementById('pwa-force').checked = pwa.force_app;
+            if (pwa.icon) {
+                document.getElementById('pwa-icon-url').value = pwa.icon;
+                document.getElementById('pwa-icon-preview').src = pwa.icon;
+            }
         } catch (e) {
             console.warn('PWA settings load error:', e);
         }
@@ -506,11 +522,34 @@
       } catch (e) { toast(e.message, 'error'); }
     }
 
+    async function uploadPWAIcon(input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const btn = input.nextElementSibling;
+      const originalText = btn.innerText;
+      btn.disabled = true;
+      btn.innerText = 'Uploading...';
+      try {
+        const url = await uploadToCloudinary(file);
+        if (url) {
+          document.getElementById('pwa-icon-url').value = url;
+          document.getElementById('pwa-icon-preview').src = url;
+          toast('Icon uploaded successfully! Click Save App Settings to apply.', 'success');
+        }
+      } catch (e) {
+        toast(e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+      }
+    }
+
     async function savePWASettings() {
       const payload = {
         enabled: document.getElementById('pwa-enabled').checked,
         prompt_install: document.getElementById('pwa-prompt').checked,
-        force_app: document.getElementById('pwa-force').checked
+        force_app: document.getElementById('pwa-force').checked,
+        icon: document.getElementById('pwa-icon-url').value
       };
       try {
         await API.put('/settings/pwa', payload);
