@@ -44,14 +44,20 @@ async function startCamera() {
         });
         videoElement.srcObject = stream;
         streamRef = stream;
-        return new Promise((resolve) => {
+        
+        return new Promise((resolve, reject) => {
+            let timeout = setTimeout(() => {
+                resolve(videoElement); // Resolve anyway after 5 seconds to avoid permanent hang
+            }, 5000);
+            
             videoElement.onloadedmetadata = () => {
-                videoElement.play();
+                clearTimeout(timeout);
+                videoElement.play().catch(e => console.warn('Autoplay prevented:', e));
                 resolve(videoElement);
             };
         });
     } catch (err) {
-        if (err.name === 'NotAllowedError') throw new Error('Camera permission denied. Please allow camera access in your browser settings.');
+        if (err.name === 'NotAllowedError') throw new Error('Camera permission denied. Please allow camera access.');
         if (err.name === 'NotFoundError') throw new Error('No camera found on this device.');
         throw err;
     }
@@ -346,66 +352,70 @@ window.executePublicFacePunch = async function() {
 
         let lastScanTime = 0;
         const scanInterval = setInterval(async () => {
-            if (!streamRef) { clearInterval(scanInterval); return; }
-            
-            if (Date.now() - lastScanTime < 500) return;
-            lastScanTime = Date.now();
-
-            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.6 })).withFaceLandmarks().withFaceDescriptor();
-
-            if (detections) {
-                overlayEl.innerHTML = '<span class="spinner-sm"></span> Matching...';
-                msgEl.textContent = "Face detected! Verifying...";
+            try {
+                if (!streamRef) { clearInterval(scanInterval); return; }
                 
-                try {
-                    const embedding = Array.from(detections.descriptor);
+                if (Date.now() - lastScanTime < 500) return;
+                lastScanTime = Date.now();
+
+                const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.6 })).withFaceLandmarks().withFaceDescriptor();
+
+                if (detections) {
+                    overlayEl.innerHTML = '<span class="spinner-sm"></span> Matching...';
+                    msgEl.textContent = "Face detected! Verifying...";
                     
-                    let lat = null, lng = null;
                     try {
-                        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 }));
-                        lat = pos.coords.latitude;
-                        lng = pos.coords.longitude;
-                    } catch (e) { }
+                        const embedding = Array.from(detections.descriptor);
+                        
+                        let lat = null, lng = null;
+                        try {
+                            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 }));
+                            lat = pos.coords.latitude;
+                            lng = pos.coords.longitude;
+                        } catch (e) { }
 
-                    const res = await fetch('/api/attendance/public-face-punch', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ embedding, lat, lng, device: navigator.userAgent })
-                    }).then(async r => {
-                        const json = await r.json();
-                        if (!r.ok) throw new Error(json.error || 'Server error');
-                        return json;
-                    });
+                        const res = await fetch('/api/attendance/public-face-punch', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ embedding, lat, lng, device: navigator.userAgent })
+                        }).then(async r => {
+                            const json = await r.json();
+                            if (!r.ok) throw new Error(json.error || 'Server error');
+                            return json;
+                        });
 
-                    clearInterval(scanInterval);
-                    overlayEl.innerHTML = '✅ Verified';
-                    overlayEl.style.background = 'rgba(46, 213, 115, 0.4)';
-                    
-                    if (res.action === 'already_complete') {
-                        msgEl.innerHTML = `<span style="color:#2ed573">${res.message}</span>`;
-                    } else {
-                        msgEl.innerHTML = `<span style="color:#2ed573">Welcome ${res.full_name || ''}! ${res.action === 'punch_in' ? 'Punched In' : 'Punched Out'} successfully.</span>`;
+                        clearInterval(scanInterval);
+                        overlayEl.innerHTML = '✅ Verified';
+                        overlayEl.style.background = 'rgba(46, 213, 115, 0.4)';
+                        
+                        if (res.action === 'already_complete') {
+                            msgEl.innerHTML = `<span style="color:#2ed573">${res.message}</span>`;
+                        } else {
+                            msgEl.innerHTML = `<span style="color:#2ed573">Welcome ${res.full_name || ''}! ${res.action === 'punch_in' ? 'Punched In' : 'Punched Out'} successfully.</span>`;
+                        }
+                        
+                        if (typeof toast !== 'undefined') toast(`Success!`, 'success');
+                        
+                        setTimeout(() => {
+                            closePunchModal();
+                        }, 2500);
+
+                    } catch (err) {
+                        overlayEl.innerHTML = '❌ Retry';
+                        overlayEl.style.background = 'rgba(255, 71, 87, 0.4)';
+                        msgEl.innerHTML = `<span style="color:#ff4757">${err.message}</span>`;
+                        setTimeout(() => {
+                            overlayEl.innerHTML = 'Scanning...';
+                            overlayEl.style.background = 'rgba(0,0,0,0.4)';
+                            msgEl.textContent = "Position face for retry...";
+                        }, 2000);
                     }
-                    
-                    if (typeof toast !== 'undefined') toast(`Success!`, 'success');
-                    
-                    setTimeout(() => {
-                        closePunchModal();
-                    }, 2500);
-
-                } catch (err) {
-                    overlayEl.innerHTML = '❌ Retry';
-                    overlayEl.style.background = 'rgba(255, 71, 87, 0.4)';
-                    msgEl.innerHTML = `<span style="color:#ff4757">${err.message}</span>`;
-                    setTimeout(() => {
-                        overlayEl.innerHTML = 'Scanning...';
-                        overlayEl.style.background = 'rgba(0,0,0,0.4)';
-                        msgEl.textContent = "Position face for retry...";
-                    }, 2000);
+                } else {
+                    overlayEl.textContent = "Scanning...";
+                    msgEl.textContent = "No face detected. Align properly.";
                 }
-            } else {
-                overlayEl.textContent = "Scanning...";
-                msgEl.textContent = "No face detected. Align properly.";
+            } catch (err) {
+                console.warn('Face detection error:', err);
             }
         }, 300);
 
