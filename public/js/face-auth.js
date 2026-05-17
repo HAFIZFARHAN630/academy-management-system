@@ -312,6 +312,110 @@ window.closePunchModal = function() {
     if (modal) modal.remove();
 }
 
+window.executePublicFacePunch = async function() {
+    let overlay = document.getElementById('face-punch-modal');
+    if (overlay) overlay.remove();
+
+    overlay = document.createElement('div');
+    overlay.id = 'face-punch-modal';
+    overlay.className = 'modal-overlay open';
+    overlay.innerHTML = `
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3>📷 Quick Face Attendance</h3>
+                <button class="btn-close" onclick="closePunchModal()">✕</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div style="width: 280px; height: 280px; margin: 0 auto; border-radius: 20px; overflow: hidden; border: 3px solid var(--color-primary); position: relative; background: #000;" id="punch-video-container">
+                    <div id="punch-status-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 1.1rem;">Initializing...</div>
+                </div>
+                <div id="punch-msg" style="margin-top: 15px; font-weight: 500;">Please position your face in the frame.</div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const msgEl = document.getElementById('punch-msg');
+    const overlayEl = document.getElementById('punch-status-overlay');
+
+    try {
+        await loadFaceModels();
+        const video = await startCamera();
+        document.getElementById('punch-video-container').appendChild(video);
+        overlayEl.textContent = "Scanning...";
+
+        let lastScanTime = 0;
+        const scanInterval = setInterval(async () => {
+            if (!streamRef) { clearInterval(scanInterval); return; }
+            
+            if (Date.now() - lastScanTime < 500) return;
+            lastScanTime = Date.now();
+
+            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.6 })).withFaceLandmarks().withFaceDescriptor();
+
+            if (detections) {
+                overlayEl.innerHTML = '<span class="spinner-sm"></span> Matching...';
+                msgEl.textContent = "Face detected! Verifying...";
+                
+                try {
+                    const embedding = Array.from(detections.descriptor);
+                    
+                    let lat = null, lng = null;
+                    try {
+                        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 }));
+                        lat = pos.coords.latitude;
+                        lng = pos.coords.longitude;
+                    } catch (e) { }
+
+                    const res = await fetch('/api/attendance/public-face-punch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ embedding, lat, lng, device: navigator.userAgent })
+                    }).then(async r => {
+                        const json = await r.json();
+                        if (!r.ok) throw new Error(json.error || 'Server error');
+                        return json;
+                    });
+
+                    clearInterval(scanInterval);
+                    overlayEl.innerHTML = '✅ Verified';
+                    overlayEl.style.background = 'rgba(46, 213, 115, 0.4)';
+                    
+                    if (res.action === 'already_complete') {
+                        msgEl.innerHTML = `<span style="color:#2ed573">${res.message}</span>`;
+                    } else {
+                        msgEl.innerHTML = `<span style="color:#2ed573">Welcome ${res.full_name || ''}! ${res.action === 'punch_in' ? 'Punched In' : 'Punched Out'} successfully.</span>`;
+                    }
+                    
+                    if (typeof toast !== 'undefined') toast(`Success!`, 'success');
+                    
+                    setTimeout(() => {
+                        closePunchModal();
+                    }, 2500);
+
+                } catch (err) {
+                    overlayEl.innerHTML = '❌ Retry';
+                    overlayEl.style.background = 'rgba(255, 71, 87, 0.4)';
+                    msgEl.innerHTML = `<span style="color:#ff4757">${err.message}</span>`;
+                    setTimeout(() => {
+                        overlayEl.innerHTML = 'Scanning...';
+                        overlayEl.style.background = 'rgba(0,0,0,0.4)';
+                        msgEl.textContent = "Position face for retry...";
+                    }, 2000);
+                }
+            } else {
+                overlayEl.textContent = "Scanning...";
+                msgEl.textContent = "No face detected. Align properly.";
+            }
+        }, 300);
+
+    } catch (e) {
+        if (typeof toast !== 'undefined') toast(e.message, 'error');
+        else alert(e.message);
+        closePunchModal();
+    }
+}
+
 // Function checking if user needs enrollment
 async function checkDailyFaceEnrollment() {
     const user = getUser();

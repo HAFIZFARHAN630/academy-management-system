@@ -329,9 +329,12 @@
             </div>
             <div class="settings-row">
               <div><div class="label">Data Retention</div><div class="hint">Archive records older than</div></div>
-              <select class="form-control" style="width:120px;padding:6px 10px;">
-                <option>2 years</option><option>3 years</option><option>5 years</option>
-              </select>
+              <div style="display:flex; gap: 10px;">
+                  <select class="form-control" style="width:120px;padding:6px 10px;" id="archive-years">
+                    <option value="2">2 years</option><option value="3">3 years</option><option value="5">5 years</option>
+                  </select>
+                  <button class="btn btn-primary btn-sm" onclick="archiveData()">Archive Data</button>
+              </div>
             </div>
             <div style="margin-top:var(--space-5); display:flex; flex-direction:column; gap:var(--space-3);">
               <button class="btn btn-secondary" onclick="toast('Backup initiated...','info')">📦 Manual Backup Now</button>
@@ -564,6 +567,18 @@
     }
 
     function exportData() { toast('Export feature: contact ClickTake Technologies for full data export tools.', 'info'); }
+
+    async function archiveData() {
+        const years = document.getElementById('archive-years').value;
+        if (!confirm(`Are you sure you want to permanently delete all attendance and visitor records older than ${years} years? This action cannot be undone.`)) return;
+        
+        try {
+            const res = await API.post('/settings/archive-data', { years });
+            toast(`Successfully deleted ${res.deleted.attendance} attendance and ${res.deleted.visitors} visitor records.`, 'success');
+        } catch (e) {
+            toast(e.message, 'error');
+        }
+    }
 
     // Simulated audit log
     document.getElementById('audit-tbody').innerHTML = `

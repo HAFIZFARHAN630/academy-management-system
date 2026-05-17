@@ -359,6 +359,14 @@
       Select your role to access the system. Credentials are provided by your Academy Administrator.
     </p>
 
+    <!-- Quick Face Punch Button -->
+    <div style="margin-bottom: var(--space-8); text-align: center; animation: fadeInUp 0.6s ease 0.25s both;">
+      <button class="btn btn-primary" style="padding: 16px 32px; font-size: 1.2rem; border-radius: var(--radius-full); box-shadow: 0 8px 24px rgba(108, 99, 255, 0.4);" onclick="executePublicFacePunch()">
+        📷 Quick Face Attendance
+      </button>
+      <p style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">Auto-detects face and punches you in/out instantly.</p>
+    </div>
+
     <!-- 3 Role Cards -->
     <div class="roles-grid">
 
@@ -443,6 +451,8 @@
 
   <script src="/js/api.js?v=2.6.8"></script>
   <script src="/js/pwa.js?v=2.6.8"></script>
+  <script src="/js/face-api.min.js"></script>
+  <script src="/js/face-auth.js?v=2.6.8"></script>
   <script>
     // ── Already logged in? Redirect ──
     const user = getUser();

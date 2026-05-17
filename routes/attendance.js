@@ -2,6 +2,138 @@ const router = require('express').Router();
 const supabase = require('../database/supabase');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
+// Helper for local date/time
+const getToday = () => new Date().toLocaleDateString('en-CA', { timeZone: process.env.TIMEZONE || 'Asia/Karachi' });
+const getNowTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: process.env.TIMEZONE || 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
+
+// POST /api/attendance/public-face-punch
+router.post('/public-face-punch', async (req, res) => {
+  const { embedding, device, lat, lng } = req.body;
+  if (!embedding || embedding.length !== 128) {
+    return res.status(400).json({ error: 'Invalid face scan' });
+  }
+
+  // 1. Fetch all enrolled users
+  const { data: enrolledUsers, error: fetchErr } = await supabase
+    .from('users')
+    .select('id, full_name, face_embedding, shift_start, shift_end, role')
+    .eq('is_face_enrolled', 1)
+    .eq('status', 'active');
+
+  if (fetchErr || !enrolledUsers || enrolledUsers.length === 0) {
+    return res.status(404).json({ error: 'No users with enrolled face data found.' });
+  }
+
+  // 2. Fetch Face ID Threshold from settings
+  let threshold = 0.6;
+  try {
+    const { data: settingRow } = await supabase.from('system_settings').select('value').eq('key', 'face_id_settings').maybeSingle();
+    if (settingRow) {
+        const faceSettings = JSON.parse(settingRow.value);
+        if (faceSettings.enabled === false) {
+            return res.status(403).json({ error: 'Face attendance is disabled.' });
+        }
+        if (faceSettings.threshold) {
+            threshold = (1 - (faceSettings.threshold / 100));
+        }
+    }
+  } catch (e) { console.warn('Failed to load face settings, using default'); }
+
+  // 3. Find closest match
+  const calculateDistance = (v1, v2) => Math.sqrt(v1.reduce((sum, val, i) => sum + Math.pow(val - v2[i], 2), 0));
+  
+  let bestMatch = null;
+  let minDistance = 999;
+
+  for (let u of enrolledUsers) {
+      if (!u.face_embedding) continue;
+      let regEmbedding = u.face_embedding;
+      if (typeof regEmbedding === 'string') {
+          try { regEmbedding = JSON.parse(regEmbedding); } catch (e) { continue; }
+      }
+      if (!Array.isArray(regEmbedding)) continue;
+      
+      const distance = calculateDistance(embedding, regEmbedding);
+      if (distance < minDistance) {
+          minDistance = distance;
+          bestMatch = u;
+      }
+  }
+
+  const confidence = 1 - minDistance;
+  
+  if (!bestMatch || minDistance > threshold) {
+    return res.status(401).json({ 
+      error: 'Face not recognized.', 
+      confidence: confidence.toFixed(4),
+      distance: minDistance.toFixed(4)
+    });
+  }
+
+  // 4. Process Attendance
+  const today = getToday();
+  const now = Math.floor(Date.now() / 1000);
+  const location = lat && lng ? JSON.stringify({ lat, lng }) : null;
+
+  const { data: existing } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('user_id', bestMatch.id)
+    .eq('date', today)
+    .maybeSingle();
+
+  if (!existing) {
+    const nowTime = getNowTime();
+    let status = 'present';
+    if (bestMatch.shift_start && nowTime > bestMatch.shift_start) {
+        status = 'late';
+    }
+
+    await supabase
+      .from('attendance')
+      .insert({
+        user_id: bestMatch.id,
+        punch_in: now,
+        date: today,
+        location_in: location,
+        device_in: device,
+        status: status,
+        location_lat: lat || null,
+        location_lng: lng || null,
+        method: 'face',
+        confidence_score: confidence,
+        face_scan_method: 'public_kiosk'
+      });
+    
+    return res.json({ action: 'punch_in', time: now, status, full_name: bestMatch.full_name });
+  }
+
+  if (!existing.punch_out) {
+    const nowTime = getNowTime();
+    let isEarly = 0;
+    if (bestMatch.shift_end && nowTime < bestMatch.shift_end) {
+        isEarly = 1;
+    }
+
+    const duration = now - existing.punch_in;
+    await supabase
+      .from('attendance')
+      .update({
+        punch_out: now,
+        location_out: location,
+        device_out: device,
+        early_leave: isEarly,
+        method: 'face',
+        confidence_score: confidence
+      })
+      .eq('id', existing.id);
+    
+    return res.json({ action: 'punch_out', time: now, duration_seconds: duration, is_early: !!isEarly, full_name: bestMatch.full_name });
+  }
+
+  res.json({ action: 'already_complete', message: `Welcome ${bestMatch.full_name}, you already punched in and out today.` });
+});
+
 router.use(authMiddleware);
 
 // Real-time clients for SSE
@@ -119,10 +251,7 @@ async function getLiveData(date) {
   }
 }
 
-// Helper for local date/time
-const getToday = () => new Date().toLocaleDateString('en-CA', { timeZone: process.env.TIMEZONE || 'Asia/Karachi' });
-const getNowTime = () => new Date().toLocaleTimeString('en-GB', { timeZone: process.env.TIMEZONE || 'Asia/Karachi', hour12: false, hour: '2-digit', minute: '2-digit' });
-
+// Helpers moved to top of file
 // POST /api/attendance/punch — Punch In/Out
 router.post('/punch', async (req, res) => {
   const today = getToday();

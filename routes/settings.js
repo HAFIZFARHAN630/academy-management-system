@@ -260,4 +260,47 @@ router.post('/privacy', authMiddleware, requireRole('admin'), async (req, res) =
     }
 });
 
+// POST /api/settings/archive-data (Admin only)
+router.post('/archive-data', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const { years } = req.body;
+        if (!years) return res.status(400).json({ error: 'Years parameter is required' });
+        
+        const yearsInt = parseInt(years);
+        if (isNaN(yearsInt) || yearsInt < 1) return res.status(400).json({ error: 'Invalid years parameter' });
+
+        const cutoffDate = new Date();
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - yearsInt);
+        const cutoffString = cutoffDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        const cutoffUnix = Math.floor(cutoffDate.getTime() / 1000);
+
+        // Delete from attendance where date <= cutoffString
+        const { error: attError, count: attCount } = await supabase
+            .from('attendance')
+            .delete({ count: 'exact' })
+            .lte('date', cutoffString);
+
+        if (attError) throw attError;
+
+        // Delete from visitors where check_in <= cutoffUnix
+        const { error: visError, count: visCount } = await supabase
+            .from('visitors')
+            .delete({ count: 'exact' })
+            .lte('check_in', cutoffUnix);
+
+        if (visError) throw visError;
+
+        await supabase.from('audit_log').insert({
+            admin_id: req.user.id,
+            action: 'ARCHIVE_DATA',
+            target_table: 'multiple',
+            details: `Deleted data older than ${yearsInt} years. Attendance: ${attCount || 0}, Visitors: ${visCount || 0}`
+        });
+
+        res.json({ success: true, deleted: { attendance: attCount || 0, visitors: visCount || 0 } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

@@ -320,9 +320,9 @@
 
         async function loadHosts() {
             try {
-                const teachers = await API.get('/users/teachers');
+                const teachers = await API.get('/users/public-teachers');
                 const sel = document.getElementById('v-host');
-                teachers.filter(t => t.status === 'active').forEach(t => {
+                teachers.forEach(t => {
                     const opt = document.createElement('option');
                     opt.value = t.id; opt.textContent = t.full_name + (t.subject ? ` (${t.subject})` : '');
                     sel.appendChild(opt);

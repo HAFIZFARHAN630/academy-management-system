@@ -2,8 +2,6 @@ const router = require('express').Router();
 const supabase = require('../database/supabase');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
-router.use(authMiddleware);
-
 async function generateVisitorId() {
     const d = new Date();
     const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
@@ -49,7 +47,7 @@ router.post('/checkin', async (req, res) => {
             purpose,
             host_id: host_id || null,
             check_in: now,
-            registered_by: req.user.id,
+            registered_by: req.user ? req.user.id : null,
             notes: notes || null,
             badge_qr: visitor_id
         })
@@ -72,6 +70,9 @@ router.post('/checkin', async (req, res) => {
 
     res.json({ id: result.id, visitor_id, check_in: now });
 });
+
+// Apply auth middleware to all routes below this line
+router.use(authMiddleware);
 
 // POST /api/visitors/checkout/:id
 router.post('/checkout/:id', async (req, res) => {

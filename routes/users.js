@@ -4,6 +4,19 @@ const supabase = require('../database/supabase');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const { uploadUserPhoto, handleUploadError } = require('../services/storage.service');
 
+// GET /api/users/public-teachers (Public list for visitor checkin)
+router.get('/public-teachers', async (req, res) => {
+    const { data: teachers, error } = await supabase
+        .from('users')
+        .select('id, full_name, subject')
+        .eq('role', 'teacher')
+        .eq('status', 'active')
+        .order('full_name');
+    
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(teachers);
+});
+
 router.use(authMiddleware);
 
 // ─── FILE UPLOAD ─────────────────────────────────────────────────────────────
